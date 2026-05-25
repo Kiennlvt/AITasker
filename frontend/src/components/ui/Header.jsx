@@ -1,0 +1,102 @@
+import { useState, useEffect, useRef } from "react"; // 🌟 Đã bổ sung import đầy đủ React Hooks
+import { useNavigate } from "react-router-dom";
+import { Bell, Settings, User, LogOut, ChevronDown } from "lucide-react"; // 🌟 Đã bổ sung thêm User và ChevronDown
+
+export default function Header({ children }) {
+  const navigate = useNavigate();
+  
+  // 1. Tạo State để quản lý đóng/mở Dropdown
+  const [isOpen, setIsOpen] = useState(false);
+  
+  // 2. Dùng useRef để bắt sự kiện click ra ngoài thì tự động đóng menu
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    alert("Đang đăng xuất...");
+    // Thực hiện xóa token / gọi API logout ở đây nếu có
+    navigate("/login"); 
+  };
+
+  return (
+    // 🌟 Thêm sticky top-0 và z-50 để Header luôn cố định khi cuộn nội dung Outlet ở dưới
+    <header className="h-[90px] bg-white border-b border-gray-200 px-10 flex items-center justify-between sticky top-0 z-50">
+      {/* SEARCH */}
+      <div className="flex items-center">
+        {children}
+      </div>
+
+      {/* RIGHT */}
+      <div className="flex items-center gap-6">
+        <button className="text-[#1a1a3c] hover:opacity-80 transition-opacity">
+          <Bell size={22} />
+        </button>
+
+        <button className="text-[#1a1a3c] hover:opacity-80 transition-opacity">
+          <Settings size={22} />
+        </button>
+
+        <div className="h-6 w-[1px] bg-gray-200 mx-1"></div>
+
+        {/* AVATAR */}
+        <div className="relative" ref={dropdownRef}>
+          {/* Nút bấm để Toggle đóng/mở */}
+          <button 
+            onClick={() => setIsOpen(!isOpen)} 
+            className="flex items-center gap-3 hover:bg-gray-50 p-1.5 rounded-2xl transition-all outline-none"
+          >
+            <div className="text-right hidden sm:block">
+              <h4 className="font-bold text-sm text-[#15153d]">Alex Chen</h4>
+              <span className="text-xs text-gray-400 font-medium">Enterprise Client</span>
+            </div>
+            <img
+              src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80"
+              alt="Avatar"
+              className="w-10 h-10 rounded-xl object-cover border border-gray-200"
+            />
+            <ChevronDown size={16} className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {/* Hộp MENU THẢ XUỐNG (Dropdown) */}
+          {isOpen && (
+            <div className="absolute right-0 mt-3 w-56 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 z-50 animate-fadeIn min-w-[200px]">
+              <div className="px-4 py-2 border-b border-gray-50 sm:hidden">
+                <p className="font-bold text-sm text-[#15153d]">Alex Chen</p>
+                <p className="text-xs text-gray-400">Enterprise Client</p>
+              </div>
+
+              {/* Lựa chọn 1: Xem Profile */}
+              <button 
+                onClick={() => { navigate("/expert-profile"); setIsOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-[#15153d] transition-all text-left"
+              >
+                <User size={18} className="text-gray-400" />
+                View Profile
+              </button>
+
+              <div className="h-[1px] bg-gray-100 my-1"></div>
+
+              {/* Lựa chọn 3: Đăng xuất */}
+              <button 
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-rose-500 hover:bg-rose-50 transition-all text-left"
+              >
+                <LogOut size={18} />
+                Sign Out
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
