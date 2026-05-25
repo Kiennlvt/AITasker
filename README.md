@@ -3,7 +3,7 @@
 A full-stack marketplace platform connecting **Clients** who need AI/ML work done with **Experts** who deliver it. Clients post jobs, Experts submit proposals, and both collaborate through managed projects with milestone-based delivery and real-time messaging.
 
 ```
-aitasker-mono/
+aitasker-fullstack/
 ├── frontend/   React 19 + Vite + TailwindCSS + Zustand   → :3000
 └── backend/    Spring Boot 3.3 + Java 21 + PostgreSQL     → :8080
 ```
