@@ -5,6 +5,7 @@ import {
   Layers3,
   Star,
   UserCircle2,
+  ShoppingBag,
 } from "lucide-react";
 import { Link, NavLink } from "react-router-dom";
 import logo from "../../assets/images/logo01.png";
@@ -28,6 +29,11 @@ export default function SidebarMarketplace({
       name: "Marketplace",
       icon: <Layers3 size={20} />,
       path: "/marketplace",
+    },
+    {
+      name: "Services",
+      icon: <ShoppingBag size={20} />,
+      path: "/services",
     },
     {
       name: "Dashboard",

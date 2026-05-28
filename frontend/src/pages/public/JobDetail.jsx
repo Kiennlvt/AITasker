@@ -1,150 +1,210 @@
-import React from "react";
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
-import { servicesJobDetails } from "../../data/servicesJobDetails";
-import { Link, useParams } from "react-router-dom";
-import {
-  FiCode,
-  FiCpu,
-  FiActivity,
-  FiHome,
-  FiClock,
-  FiUsers,
-} from "react-icons/fi";
+import { getJobById } from "../../api/jobs";
+import { submitProposal } from "../../api/proposals";
+import { FiClock, FiUsers, FiDollarSign, FiCalendar } from "react-icons/fi";
+import toast from "react-hot-toast";
+import useAuthStore from "../../store/authStore";
 
 export default function JobDetail() {
   const { id } = useParams();
-  const job = servicesJobDetails.find((item) => item.id === Number(id));
+  const user = useAuthStore((s) => s.user);
+  const [job, setJob] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showApply, setShowApply] = useState(false);
+  const [bid, setBid] = useState("");
+  const [days, setDays] = useState("");
+  const [cover, setCover] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  if (!job) {
-    return <div className="p-10 text-3xl font-black">Job not found</div>;
-  }
+  useEffect(() => {
+    getJobById(id)
+      .then(setJob)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  const handleApply = async () => {
+    if (!bid || !days || !cover) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await submitProposal({
+        jobId: id,
+        bidAmount: Number(bid),
+        deliveryTime: Number(days),
+        coverLetter: cover,
+      });
+      toast.success("Proposal submitted!");
+      setShowApply(false);
+    } catch {
+      toast.error("Failed to submit proposal");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) return <div className="p-10 text-gray-400">Loading...</div>;
+  if (!job) return <div className="p-10 text-3xl font-black">Job not found</div>;
 
   return (
     <div className="min-h-screen bg-[#f4f6fb] text-[#111331]">
-      <section className="mx-auto grid max-w-[1180px] grid-cols-[1fr_280px] gap-8 px-8 py-10">
+      <section className="mx-auto grid max-w-[1180px] grid-cols-[1fr_300px] gap-8 px-8 py-10">
         <div>
           <div className="mb-5 flex items-center gap-2 text-sm">
-            <Link
-              to="/marketplace"
-              className="font-medium text-slate-500 transition hover:text-orange-500"
-            >
+            <Link to="/marketplace" className="font-medium text-slate-500 transition hover:text-orange-500">
               Marketplace
             </Link>
-
             <span className="text-slate-400">/</span>
+            <span className="font-black text-[#111331]">Job Details</span>
+          </div>
 
-            <span className="font-black text-[#111331]">
-              Job Details
+          <div className="flex items-center gap-3 mb-3">
+            <span className="bg-orange-500 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full">
+              {job.status ?? "OPEN"}
+            </span>
+            <span className="text-xs text-slate-400">
+              Posted {new Date(job.createdAt).toLocaleDateString()}
             </span>
           </div>
 
-          <h1 className="max-w-[680px] text-5xl font-black leading-tight tracking-tight">
+          <h1 className="max-w-[680px] text-4xl font-black leading-tight tracking-tight">
             {job.title}
           </h1>
 
           <div className="mt-5 flex flex-wrap gap-2">
-            {job.tags.map((tag, index) => (
-              <Badge
-                key={tag}
-                className={index === 0 ? "" : "bg-[#eef2ff] text-[#111331]"}
-              >
+            {(job.skills ?? []).map((tag, i) => (
+              <Badge key={tag} className={i === 0 ? "" : "bg-[#eef2ff] text-[#111331]"}>
                 {tag}
               </Badge>
             ))}
           </div>
 
-          <Section title="Detailed Description">
-            {job.description.map((text) => (
-              <p key={text} className="mt-5 first:mt-0">
-                {text}
-              </p>
-            ))}
-          </Section>
-
-          <Section title="Technical Requirements">
-            <div className="grid grid-cols-2 gap-5">
-              <Requirement icon={<FiCode />} title="Advanced AI Development" text="Strong experience in building production-ready AI systems." />
-              <Requirement icon={<FiCpu />} title="Model Optimization" text="Ability to optimize AI models for performance and reliability." />
-              <Requirement icon={<FiActivity />} title="System Integration" text="Experience integrating AI services into real business workflows." />
-              <Requirement icon={<FiHome />} title="Business Domain Fit" text="Understanding client requirements and translating them into AI solutions." />
-            </div>
+          <Section title="Project Description">
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">{job.description}</p>
           </Section>
 
           <Section title="Deliverables">
             <ul className="space-y-3 text-sm leading-relaxed text-slate-600">
               <li className="flex gap-3">
-                <span className="mt-2 h-1.5 w-1.5 rounded-full bg-orange-500" />
-                Working AI solution based on the requested service scope.
+                <span className="mt-2 h-1.5 w-1.5 rounded-full bg-orange-500 shrink-0" />
+                Working AI solution matching the described scope.
               </li>
               <li className="flex gap-3">
-                <span className="mt-2 h-1.5 w-1.5 rounded-full bg-orange-500" />
-                Technical documentation and setup instructions.
+                <span className="mt-2 h-1.5 w-1.5 rounded-full bg-orange-500 shrink-0" />
+                Technical documentation and deployment guide.
               </li>
               <li className="flex gap-3">
-                <span className="mt-2 h-1.5 w-1.5 rounded-full bg-orange-500" />
-                Final deployment-ready package or API handoff.
+                <span className="mt-2 h-1.5 w-1.5 rounded-full bg-orange-500 shrink-0" />
+                Source code and final handoff package.
               </li>
             </ul>
           </Section>
 
-          <Section title="About the Project">
-            <div className="overflow-hidden rounded-3xl">
-              <img
-                src={job.image}
-                alt={job.title}
-                className="h-[220px] w-full object-cover"
-              />
-            </div>
-
-            <p className="mt-5 text-sm leading-relaxed text-slate-600">
-              This project is part of the client&apos;s AI automation roadmap and requires a reliable expert to deliver a practical, scalable solution.
-            </p>
-          </Section>
+          {/* Proposal form */}
+          {user?.role === "EXPERT" && (
+            <Section title="Submit a Proposal">
+              {!showApply ? (
+                <Button onClick={() => setShowApply(true)}>Apply for this Job</Button>
+              ) : (
+                <div className="space-y-4 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase">Bid Amount ($)</label>
+                      <input
+                        type="number"
+                        value={bid}
+                        onChange={(e) => setBid(e.target.value)}
+                        className="w-full mt-1 p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-orange-400"
+                        placeholder="e.g. 3000"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase">Delivery (days)</label>
+                      <input
+                        type="number"
+                        value={days}
+                        onChange={(e) => setDays(e.target.value)}
+                        className="w-full mt-1 p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-orange-400"
+                        placeholder="e.g. 30"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase">Cover Letter</label>
+                    <textarea
+                      value={cover}
+                      onChange={(e) => setCover(e.target.value)}
+                      rows={5}
+                      className="w-full mt-1 p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-orange-400 resize-none"
+                      placeholder="Describe your approach, relevant experience, and why you're the right fit..."
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <Button onClick={handleApply} disabled={submitting}>
+                      {submitting ? "Submitting..." : "Submit Proposal"}
+                    </Button>
+                    <button
+                      onClick={() => setShowApply(false)}
+                      className="px-4 py-2 text-sm font-semibold text-gray-500 hover:text-gray-700"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </Section>
+          )}
         </div>
 
         <aside className="space-y-6">
           <div className="rounded-3xl bg-white p-7 shadow-[0_14px_35px_rgba(15,23,42,0.08)]">
-            <InfoRow label="Budget" value={job.budget} />
-            <InfoRow label="Duration" value={job.duration} />
-            <InfoRow label="Experience Level" value={job.level} orange />
+            <InfoRow label="Budget" value={`$${Number(job.budget ?? 0).toLocaleString()}`} icon={<FiDollarSign />} />
+            <InfoRow
+              label="Deadline"
+              value={job.deadline ? new Date(job.deadline).toLocaleDateString() : "Flexible"}
+              icon={<FiCalendar />}
+            />
+            <InfoRow label="Proposals" value={`${job.proposalCount ?? 0} received`} icon={<FiUsers />} orange />
 
-            <Button className="mt-6 w-full rounded-full py-4 text-base">
-              Apply Now
-            </Button>
-
+            {user?.role === "EXPERT" && (
+              <Button className="mt-6 w-full rounded-full py-4 text-base" onClick={() => setShowApply(true)}>
+                Apply Now
+              </Button>
+            )}
             <button className="mt-4 w-full rounded-full border border-slate-200 bg-white py-4 text-sm font-black text-[#111331]">
               Save for Later
             </button>
 
             <div className="mt-6 space-y-3 border-t border-slate-100 pt-5 text-xs text-slate-500">
               <p className="flex items-center gap-2">
-                <FiClock /> Posted 4 hours ago
+                <FiClock /> Posted {new Date(job.createdAt).toLocaleDateString()}
               </p>
               <p className="flex items-center gap-2">
-                <FiUsers /> 12 Applications received
+                <FiUsers /> {job.proposalCount ?? 0} applications
               </p>
             </div>
           </div>
 
           <div className="rounded-3xl bg-white p-7 shadow-[0_14px_35px_rgba(15,23,42,0.08)]">
-            <h3 className="mb-5 text-sm font-black">About the Expert</h3>
-
+            <h3 className="mb-5 text-sm font-black">About the Client</h3>
             <div className="flex items-center gap-3">
-              <img
-                src={job.image}
-                alt={job.author}
-                className="h-12 w-12 rounded-full object-cover"
-              />
+              {job.clientAvatarUrl ? (
+                <img src={job.clientAvatarUrl} alt={job.clientName} className="h-12 w-12 rounded-full object-cover" />
+              ) : (
+                <div className="h-12 w-12 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold text-base">
+                  {job.clientName?.slice(0, 2).toUpperCase() ?? "??"}
+                </div>
+              )}
               <div>
-                <p className="text-sm font-black">{job.author}</p>
-                <p className="text-[11px] text-slate-400">{job.rating} / 5.0 rating</p>
+                <p className="text-sm font-black">{job.clientName ?? "Client"}</p>
+                <p className="text-[11px] text-slate-400">Verified Client</p>
               </div>
             </div>
-
-            <button className="mt-6 text-xs font-black text-orange-500">
-              View Profile
-            </button>
           </div>
         </aside>
       </section>
@@ -155,31 +215,19 @@ export default function JobDetail() {
 function Section({ title, children }) {
   return (
     <section className="mt-12">
-      <h2 className="mb-5 border-b border-slate-200 pb-3 text-2xl font-black">
-        {title}
-      </h2>
+      <h2 className="mb-5 border-b border-slate-200 pb-3 text-2xl font-black">{title}</h2>
       <div className="text-sm leading-relaxed text-slate-600">{children}</div>
     </section>
   );
 }
 
-function Requirement({ icon, title, text }) {
-  return (
-    <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
-      <div className="mb-3 text-lg text-orange-500">{icon}</div>
-      <h3 className="text-sm font-black text-[#111331]">{title}</h3>
-      <p className="mt-2 text-xs leading-relaxed text-slate-500">{text}</p>
-    </div>
-  );
-}
-
-function InfoRow({ label, value, orange }) {
+function InfoRow({ label, value, icon, orange }) {
   return (
     <div className="mb-4 flex items-center justify-between gap-4 text-sm">
-      <span className="text-slate-500">{label}</span>
-      <span className={`font-black ${orange ? "text-orange-500" : "text-[#111331]"}`}>
-        {value}
+      <span className="flex items-center gap-1.5 text-slate-500">
+        {icon} {label}
       </span>
+      <span className={`font-black ${orange ? "text-orange-500" : "text-[#111331]"}`}>{value}</span>
     </div>
   );
 }

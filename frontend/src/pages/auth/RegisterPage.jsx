@@ -8,6 +8,7 @@ import { register } from "../../api/auth";
 import useAuthStore from "../../store/authStore";
 import toast from "react-hot-toast";
 
+
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState("");
@@ -26,8 +27,8 @@ export default function RegisterPage() {
     try {
       const data = await register(email, password, fullName, role);
       setAuth(data);
-      toast.success("Account created! Welcome aboard.");
-      navigate(data.role === "EXPERT" ? "/dashboard-expert" : "/dashboard");
+      toast.success("Account created! Please complete your profile.");
+      navigate(data.role === "EXPERT" ? "/expert-profile" : "/client-profile");
     } catch (err) {
       toast.error(err.response?.data?.message || "Registration failed");
     } finally {
