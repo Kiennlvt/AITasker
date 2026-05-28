@@ -1,26 +1,42 @@
 import { useEffect, useState } from "react";
-import JobCard from "../../components/common/JobCard";
+import ServiceCard from "../../components/common/ServiceCard";
+import FeaturedServiceCard from "../../components/common/FeaturedServiceCard";
 import Button from "../../components/ui/Button";
-import { getJobs } from "../../api/jobs";
+import { getServices } from "../../api/services";
 
+const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=800";
 const PAGE_SIZE = 12;
 
-export default function Marketplace() {
-  const [jobs, setJobs] = useState([]);
+function toCardShape(svc) {
+  return {
+    id: svc.id,
+    title: svc.title,
+    author: svc.expertName ?? "Unknown Expert",
+    rating: svc.expertRating != null ? svc.expertRating.toFixed(1) : "—",
+    image: svc.imageUrl || FALLBACK_IMAGE,
+    price: `$${Number(svc.price ?? 0).toLocaleString()}`,
+    tags: svc.tags ?? [],
+  };
+}
+
+export default function Services() {
+  const [services, setServices] = useState([]);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    getJobs(page, PAGE_SIZE)
+    getServices(page, PAGE_SIZE)
       .then((data) => {
-        setJobs(data.content ?? []);
+        setServices(data.content ?? []);
         setTotalPages(data.totalPages ?? 1);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [page]);
+
+  const cards = services.map(toCardShape);
 
   return (
     <div>
@@ -28,29 +44,35 @@ export default function Marketplace() {
         <div className="mb-8 flex items-end justify-between">
           <div>
             <p className="mb-2 text-xs text-slate-500">
-              Marketplace / <span className="font-black text-slate-800">All Jobs</span>
+              Services / <span className="font-black text-slate-800">All Services</span>
             </p>
             <h1 className="text-4xl font-black tracking-tight text-[#0b1b2f]">
-              AI Job Marketplace
+              AI Expert Services
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-slate-500">
-              Browse open AI projects posted by clients. Find your next opportunity in LLM fine-tuning,
-              computer vision, data engineering, and more.
+              Browse ready-made AI solutions offered by vetted experts. Hire directly for
+              LLM fine-tuning, computer vision, data pipelines, and more.
             </p>
           </div>
-          <Button variant="ghost">Sort by: Latest⌄</Button>
+          <Button variant="ghost">Sort by: Featured⌄</Button>
         </div>
 
-        {loading && <p className="text-sm text-gray-400 py-8">Loading jobs...</p>}
+        {loading && <p className="text-sm text-gray-400 py-8">Loading services...</p>}
 
-        {!loading && jobs.length === 0 && (
-          <p className="text-sm text-gray-400 py-8">No open jobs at the moment.</p>
+        {!loading && cards.length === 0 && (
+          <p className="text-sm text-gray-400 py-8">No services available.</p>
         )}
 
-        {!loading && jobs.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {jobs.map((job) => (
-              <JobCard key={job.id} job={job} />
+        {!loading && cards.length > 0 && (
+          <div className="grid grid-cols-4 gap-8">
+            {cards.slice(0, 4).map((svc) => (
+              <ServiceCard key={svc.id} service={svc} />
+            ))}
+
+            <FeaturedServiceCard />
+
+            {cards.slice(4).map((svc) => (
+              <ServiceCard key={svc.id} service={svc} />
             ))}
           </div>
         )}

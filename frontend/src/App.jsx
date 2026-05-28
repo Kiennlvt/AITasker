@@ -18,11 +18,14 @@ import ProjectDetailClient from "./pages/client/Project/ProjectDetailClient";
 import ProjectClient from "./pages/client/Project/Project";
 import ProfileClient from "./pages/client/ProfileClient";
 import Marketplace from "./pages/public/Marketplace";
+import Services from "./pages/public/Services";
+import ServiceDetail from "./pages/public/ServiceDetail";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import JobDetail from "./pages/public/JobDetail";
 import Authentication from "./components/layout/Authentication";
+import ProtectedRoute from "./components/layout/ProtectedRoute";
 export default function App() {
   return (
     <BrowserRouter>
@@ -33,31 +36,37 @@ export default function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         </Route>
-        
+
         <Route element={<PublicLayout />}>
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/jobs/:id" element={<JobDetail />} />
+          <Route path="/services" element={<Services />} />
+          <Route path="/services/:id" element={<ServiceDetail />} />
         </Route>
 
-        <Route element={<PostJobLayout />}>
-          <Route path="/post-job/step-1" element={<PostJob />} />
-          <Route path="/post-job/step-2" element={<PostJob02 />} />
-          <Route path="/post-job/step-3" element={<PostJob03 />} />
+        <Route element={<ProtectedRoute role="CLIENT" />}>
+          <Route element={<PostJobLayout />}>
+            <Route path="/post-job/step-1" element={<PostJob />} />
+            <Route path="/post-job/step-2" element={<PostJob02 />} />
+            <Route path="/post-job/step-3" element={<PostJob03 />} />
+          </Route>
+
+          <Route element={<ClientLayout />}>
+            <Route path="/dashboard" element={<DashboardClient />} />
+            <Route path="/projects" element={<ProjectClient />} />
+            <Route path="/projects/:id" element={<ProjectDetailClient />} />
+            <Route path="/manage-proposals" element={<ManageProposals />} />
+            <Route path="/messages" element={<Messages />} />
+            <Route path="/client-profile" element={<ProfileClient />} />
+          </Route>
         </Route>
 
-        <Route element={<ExpertLayout />}>
-          <Route path="/dashboard-expert" element={<DashboardExpert />} />
-          <Route path="/my-tasks" element={<MyTask />} />
-          <Route path="/expert-profile" element={<ProfileExpert />} />
-        </Route>
-
-        <Route element={<ClientLayout />}>
-          <Route path="/dashboard" element={<DashboardClient />} />
-          <Route path="/projects" element={<ProjectClient />} />
-          <Route path="/projects/:id" element={<ProjectDetailClient />} />
-          <Route path="/manage-proposals" element={<ManageProposals />} />
-          <Route path="/messages" element={<Messages />} />
-          <Route path="/client-profile" element={<ProfileClient />} />
+        <Route element={<ProtectedRoute role="EXPERT" />}>
+          <Route element={<ExpertLayout />}>
+            <Route path="/dashboard-expert" element={<DashboardExpert />} />
+            <Route path="/my-tasks" element={<MyTask />} />
+            <Route path="/expert-profile" element={<ProfileExpert />} />
+          </Route>
         </Route>
 
         <Route path="*" element={<Error404 />} />

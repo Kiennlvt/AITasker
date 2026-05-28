@@ -42,7 +42,7 @@ export default function ServiceCard({ service }) {
             </p>
             <p className="text-xl font-black text-[#0b1b2f]">{service.price}</p>
           </div>
-          <Link to={`/jobs/${service.id}`}>
+          <Link to={`/services/${service.id}`}>
             <Button size="icon" className="flex items-center justify-center">
               →
             </Button>

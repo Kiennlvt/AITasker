@@ -24,7 +24,6 @@ export default function LoginPage() {
       const data = await login(email, password);
       setAuth(data);
       toast.success(`Welcome back, ${data.fullName}!`);
-      // Redirect based on role
       if (data.role === "EXPERT") navigate("/dashboard-expert");
       else navigate("/dashboard");
     } catch (err) {

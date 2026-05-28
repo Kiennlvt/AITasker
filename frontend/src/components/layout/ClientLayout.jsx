@@ -5,6 +5,7 @@ import {
   MessageSquare,
   BriefcaseBusiness,
   BadgeRussianRubleIcon,
+  UserCircle,
 } from "lucide-react";
 import { Outlet } from "react-router-dom";
 import Header from "../ui/Header";
@@ -42,6 +43,11 @@ const menuItems = [
       name: "Messages",
       icon: <MessageSquare size={20} />,
       path: "/messages",
+    },
+    {
+      name: "Profile",
+      icon: <UserCircle size={20} />,
+      path: "/client-profile",
     },
   ];
 
