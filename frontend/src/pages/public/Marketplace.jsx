@@ -1,26 +1,53 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, Check } from "lucide-react";
 import JobCard from "../../components/common/JobCard";
-import Button from "../../components/ui/Button";
 import { getJobs } from "../../api/jobs";
 
 const PAGE_SIZE = 12;
+
+const SORT_OPTIONS = [
+  { label: "Latest",              value: "createdAt,desc" },
+  { label: "Oldest",              value: "createdAt,asc"  },
+  { label: "Budget: High to Low", value: "budget,desc"    },
+  { label: "Budget: Low to High", value: "budget,asc"     },
+  { label: "Deadline: Soonest",   value: "deadline,asc"   },
+];
 
 export default function Marketplace() {
   const [jobs, setJobs] = useState([]);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [sort, setSort] = useState(SORT_OPTIONS[0]);
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   useEffect(() => {
     setLoading(true);
-    getJobs(page, PAGE_SIZE)
+    getJobs(page, PAGE_SIZE, sort.value)
       .then((data) => {
         setJobs(data.content ?? []);
         setTotalPages(data.totalPages ?? 1);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [page]);
+  }, [page, sort]);
+
+  function handleSort(option) {
+    setSort(option);
+    setPage(0);
+    setOpen(false);
+  }
 
   return (
     <div>
@@ -38,7 +65,38 @@ export default function Marketplace() {
               computer vision, data engineering, and more.
             </p>
           </div>
-          <Button variant="ghost">Sort by: Latest⌄</Button>
+
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setOpen((v) => !v)}
+              className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 shadow-sm hover:border-orange-300 hover:text-orange-600 transition-all"
+            >
+              Sort by: {sort.label}
+              <ChevronDown
+                size={14}
+                className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {open && (
+              <div className="absolute right-0 top-full mt-2 z-50 min-w-[210px] rounded-2xl border border-slate-100 bg-white py-2 shadow-xl">
+                {SORT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => handleSort(opt)}
+                    className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition-colors hover:bg-orange-50 ${
+                      sort.value === opt.value
+                        ? "font-bold text-orange-500"
+                        : "text-slate-600"
+                    }`}
+                  >
+                    {opt.label}
+                    {sort.value === opt.value && <Check size={13} />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {loading && <p className="text-sm text-gray-400 py-8">Loading jobs...</p>}
