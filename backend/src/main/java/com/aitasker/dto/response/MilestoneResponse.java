@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Data @Builder
 public class MilestoneResponse {
@@ -14,5 +15,7 @@ public class MilestoneResponse {
     private Double amount;
     private LocalDate dueDate;
     private String deliverableNote;
+    private String revisionNote;
+    private List<String> attachmentUrls;
     private MilestoneStatus status;
 }

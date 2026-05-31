@@ -7,6 +7,8 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "milestones")
@@ -32,9 +34,18 @@ public class Milestone {
     @Column(columnDefinition = "TEXT")
     private String deliverableNote;
 
+    @Column(columnDefinition = "TEXT")
+    private String revisionNote;
+
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private MilestoneStatus status = MilestoneStatus.PENDING;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "milestone_attachments", joinColumns = @JoinColumn(name = "milestone_id"))
+    @Column(name = "url")
+    @Builder.Default
+    private List<String> attachmentUrls = new ArrayList<>();
 
     @CreationTimestamp
     private LocalDateTime createdAt;

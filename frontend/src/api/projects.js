@@ -12,8 +12,16 @@ export const getMilestones = (projectId) =>
 export const approveMilestone = (milestoneId) =>
   api.patch(`/projects/milestones/${milestoneId}/approve`).then(r => r.data.data);
 
-export const requestRevision = (milestoneId) =>
-  api.patch(`/projects/milestones/${milestoneId}/revision`).then(r => r.data.data);
+export const requestRevision = (milestoneId, note) =>
+  api.patch(`/projects/milestones/${milestoneId}/revision`, null, { params: { note } }).then(r => r.data.data);
 
-export const submitMilestone = (milestoneId) =>
-  api.patch(`/projects/milestones/${milestoneId}/submit`).then(r => r.data.data);
+export const submitMilestone = (milestoneId, note) =>
+  api.patch(`/projects/milestones/${milestoneId}/submit`, null, { params: { note } }).then(r => r.data.data);
+
+export const uploadMilestoneFiles = (milestoneId, files) => {
+  const form = new FormData();
+  files.forEach(f => form.append('files', f));
+  return api.post(`/projects/milestones/${milestoneId}/files`, form, {
+    headers: { 'Content-Type': undefined },
+  }).then(r => r.data.data);
+};

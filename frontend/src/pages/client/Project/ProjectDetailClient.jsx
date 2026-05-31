@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Share2, CheckCircle2, Terminal, ArrowLeft } from "lucide-react";
+import { Share2, Terminal, ArrowLeft, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import MessagesIcon from "../../../components/ui/MesageIcon";
 import { getProjectById, getMilestones, approveMilestone, requestRevision } from "../../../api/projects";
 import toast from "react-hot-toast";
@@ -37,6 +37,8 @@ export default function ProjectDetailClient() {
   const [milestones, setMilestones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
+  const [revisionNote, setRevisionNote] = useState({});   // milestoneId → note text
+  const [revisionOpen, setRevisionOpen] = useState(null); // milestoneId with open form
 
   useEffect(() => {
     Promise.all([getProjectById(id), getMilestones(id)])
@@ -64,12 +66,16 @@ export default function ProjectDetailClient() {
   };
 
   const handleRevision = async (milestoneId) => {
+    const note = revisionNote[milestoneId]?.trim();
+    if (!note) { toast.error("Please enter a reason for the revision."); return; }
     setActionLoading(milestoneId + "-revision");
     try {
-      await requestRevision(milestoneId);
+      await requestRevision(milestoneId, note);
       setMilestones((prev) =>
         prev.map((m) => (m.id === milestoneId ? { ...m, status: "REVISION_REQUESTED" } : m))
       );
+      setRevisionOpen(null);
+      setRevisionNote((prev) => ({ ...prev, [milestoneId]: "" }));
       toast.success("Revision requested.");
     } catch {
       toast.error("Failed to request revision");
@@ -172,23 +178,81 @@ export default function ProjectDetailClient() {
                         </p>
                       )}
 
+                      {/* Expert submission details */}
+                      {(milestone.status === "SUBMITTED" || milestone.status === "REVISION_REQUESTED") && milestone.deliverableNote && (
+                        <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                          <p className="text-[11px] font-bold text-blue-500 uppercase mb-1">Expert Note</p>
+                          <p className="text-xs text-gray-700 leading-relaxed">{milestone.deliverableNote}</p>
+                        </div>
+                      )}
+
+                      {/* Revision note from client */}
+                      {milestone.status === "REVISION_REQUESTED" && milestone.revisionNote && (
+                        <div className="mt-3 p-3 bg-amber-50 border border-amber-100 rounded-xl">
+                          <p className="text-[11px] font-bold text-amber-600 uppercase mb-1">Your Revision Request</p>
+                          <p className="text-xs text-gray-700 leading-relaxed">{milestone.revisionNote}</p>
+                        </div>
+                      )}
+
+                      {(milestone.status === "SUBMITTED" || milestone.status === "REVISION_REQUESTED") && milestone.attachmentUrls?.length > 0 && (
+                        <div className="mt-3 space-y-1.5">
+                          <p className="text-[11px] font-bold text-gray-400 uppercase">Attachments</p>
+                          {milestone.attachmentUrls.map((url) => {
+                            const filename = url.split("/").pop().replace(/^[0-9a-f-]+_/, "");
+                            return (
+                              <a
+                                key={url}
+                                href={`http://localhost:8080${url}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 border border-gray-100 hover:border-orange-200 hover:bg-orange-50/30 transition-colors"
+                              >
+                                <FileText size={14} className="text-orange-400 shrink-0" />
+                                <span className="text-xs text-gray-700 truncate">{filename}</span>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      )}
+
                       {/* Client can approve or request revision when milestone is SUBMITTED */}
                       {milestone.status === "SUBMITTED" && (
-                        <div className="flex gap-2 mt-3">
-                          <button
-                            onClick={() => handleApprove(milestone.id)}
-                            disabled={!!actionLoading}
-                            className="px-4 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-orange-600 transition-all disabled:opacity-50"
-                          >
-                            {actionLoading === milestone.id + "-approve" ? "..." : "Approve"}
-                          </button>
-                          <button
-                            onClick={() => handleRevision(milestone.id)}
-                            disabled={!!actionLoading}
-                            className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-600 shadow-sm hover:border-orange-300 transition-all disabled:opacity-50"
-                          >
-                            {actionLoading === milestone.id + "-revision" ? "..." : "Request Revision"}
-                          </button>
+                        <div className="mt-3 space-y-2">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleApprove(milestone.id)}
+                              disabled={!!actionLoading}
+                              className="px-4 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-orange-600 transition-all disabled:opacity-50"
+                            >
+                              {actionLoading === milestone.id + "-approve" ? "..." : "Approve"}
+                            </button>
+                            <button
+                              onClick={() => setRevisionOpen(revisionOpen === milestone.id ? null : milestone.id)}
+                              disabled={!!actionLoading}
+                              className="flex items-center gap-1 px-4 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-600 shadow-sm hover:border-orange-300 transition-all disabled:opacity-50"
+                            >
+                              Request Revision
+                              {revisionOpen === milestone.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                            </button>
+                          </div>
+
+                          {revisionOpen === milestone.id && (
+                            <div className="space-y-2 pt-1">
+                              <textarea
+                                value={revisionNote[milestone.id] ?? ""}
+                                onChange={(e) => setRevisionNote((prev) => ({ ...prev, [milestone.id]: e.target.value }))}
+                                placeholder="Describe what needs to be revised..."
+                                className="w-full p-3 border border-gray-200 rounded-xl text-xs outline-none focus:border-orange-400 min-h-[80px] resize-none"
+                              />
+                              <button
+                                onClick={() => handleRevision(milestone.id)}
+                                disabled={!!actionLoading}
+                                className="px-4 py-2 bg-gray-800 text-white rounded-lg text-xs font-bold hover:bg-gray-900 transition-all disabled:opacity-50"
+                              >
+                                {actionLoading === milestone.id + "-revision" ? "Sending..." : "Send Revision Request"}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
