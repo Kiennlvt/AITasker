@@ -93,9 +93,8 @@ export default function ServiceDetail() {
             <InfoRow label="Category" value={service.category ?? "—"} orange />
 
             <Button className="mt-6 w-full rounded-full py-4 text-base">Order Now</Button>
-            <button className="mt-4 w-full rounded-full border border-slate-200 bg-white py-4 text-sm font-black text-[#111331]">
-              Save for Later
-            </button>
+            <Button className="mt-6 w-full rounded-full py-4 text-base" variant="secondary">Save for later</Button>
+
 
             <div className="mt-6 space-y-3 border-t border-slate-100 pt-5 text-xs text-slate-500">
               <p className="flex items-center gap-2"><FiClock /> Available now</p>

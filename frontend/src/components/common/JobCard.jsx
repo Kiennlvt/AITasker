@@ -5,6 +5,18 @@ import Badge from "../ui/Badge";
 export default function JobCard({ job }) {
   return (
     <div className="overflow-hidden rounded-[28px] bg-white shadow-[0_20px_40px_rgba(15,23,42,0.08)] flex flex-col">
+      <div className="relative h-[155px]">
+        {job.image ? (
+          <img src={job.image} alt={job.title} className="h-full w-full object-cover" />
+        ) : (
+          <div className="h-full w-full bg-gradient-to-br from-slate-700 to-slate-900" />
+        )}
+        <div className="absolute right-4 top-4 rounded-full bg-white px-3 py-1 text-[11px] font-black flex items-center gap-1">
+          <Users size={11} />
+          {job.proposalCount ?? 0}
+        </div>
+      </div>
+
       <div className="p-6 flex flex-col flex-1">
         <div className="flex flex-wrap gap-2 mb-3">
           {(job.skills ?? []).slice(0, 3).map((tag, i) => (
@@ -43,10 +55,6 @@ export default function JobCard({ job }) {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 text-xs text-slate-400 font-medium">
-              <Users size={13} />
-              {job.proposalCount ?? 0}
-            </div>
             <Link to={`/jobs/${job.id}`}>
               <button className="w-9 h-9 rounded-full bg-orange-500 text-white flex items-center justify-center shadow-md hover:bg-orange-600 transition-all">
                 <ArrowRight size={16} />
