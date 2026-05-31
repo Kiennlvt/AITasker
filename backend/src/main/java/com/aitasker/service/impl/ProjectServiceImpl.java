@@ -7,19 +7,25 @@ import com.aitasker.entity.*;
 import com.aitasker.enums.*;
 import com.aitasker.exception.AppException;
 import com.aitasker.repository.*;
+import com.aitasker.service.FileUploadService;
 import com.aitasker.service.ProjectService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class ProjectServiceImpl implements ProjectService {
 
     private final ProjectRepository projectRepo;
     private final MilestoneRepository milestoneRepo;
     private final UserRepository userRepo;
+    private final FileUploadService fileUploadService;
 
     @Override
     public List<ProjectResponse> getMyProjects(String userId) {
@@ -67,8 +73,10 @@ public class ProjectServiceImpl implements ProjectService {
                 .orElseThrow(() -> AppException.notFound("Milestone not found"));
         if (!ms.getProject().getClient().getId().equals(clientId))
             throw AppException.forbidden("Not your project");
-        ms.setStatus(MilestoneStatus.REJECTED);
-        ms.setDeliverableNote(note);
+        if (ms.getStatus() != MilestoneStatus.SUBMITTED)
+            throw AppException.badRequest("Can only request revision on a submitted milestone");
+        ms.setStatus(MilestoneStatus.REVISION_REQUESTED);
+        ms.setRevisionNote(note);
         milestoneRepo.save(ms);
         return toResponse(ms.getProject());
     }
@@ -154,6 +162,22 @@ public class ProjectServiceImpl implements ProjectService {
                 .build();
     }
 
+    @Override
+    public List<String> uploadMilestoneFiles(String expertId, String milestoneId, List<MultipartFile> files) {
+        Milestone ms = milestoneRepo.findById(milestoneId)
+                .orElseThrow(() -> AppException.notFound("Milestone not found"));
+        if (!ms.getProject().getExpert().getId().equals(expertId))
+            throw AppException.forbidden("Not your project");
+        try {
+            List<String> urls = fileUploadService.saveMilestoneFiles(milestoneId, files);
+            ms.getAttachmentUrls().addAll(urls);
+            milestoneRepo.save(ms);
+            return ms.getAttachmentUrls();
+        } catch (IOException e) {
+            throw new RuntimeException("File upload failed: " + e.getMessage(), e);
+        }
+    }
+
     private MilestoneResponse msToResponse(Milestone m) {
         return MilestoneResponse.builder()
                 .id(m.getId())
@@ -162,6 +186,8 @@ public class ProjectServiceImpl implements ProjectService {
                 .amount(m.getAmount())
                 .dueDate(m.getDueDate())
                 .deliverableNote(m.getDeliverableNote())
+                .revisionNote(m.getRevisionNote())
+                .attachmentUrls(m.getAttachmentUrls())
                 .status(m.getStatus())
                 .build();
     }
