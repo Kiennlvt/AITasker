@@ -41,6 +41,9 @@ public class AiServiceImpl implements AiService {
             "bg-rose-100 text-rose-600",
             "bg-teal-100 text-teal-600"
     );
+    private static final Map<String, String> UNIT_MAP = Map.of(
+            "Tháng", "months", "Tuần", "weeks", "Ngày", "days"
+    );
 
     // ─── generatePRD ─────────────────────────────────────────────────────────────
 
@@ -113,6 +116,7 @@ public class AiServiceImpl implements AiService {
 
     private String buildPRDPrompt(String title, String category, String timelineAmount,
                                    String timelineUnit, String description, String selectedPackage) {
+        String safeUnit = UNIT_MAP.getOrDefault(timelineUnit, timelineUnit);
         String pkg = switch (selectedPackage != null ? selectedPackage : "") {
             case "basic"   -> "Basic ($500–$2,500)";
             case "premium" -> "Premium ($10,000+)";
@@ -136,18 +140,19 @@ public class AiServiceImpl implements AiService {
                 ## Candidate Expectations
 
                 Be specific, technical, and professional. No filler text.
-                """.formatted(title, category, timelineAmount, timelineUnit, pkg, description);
+                """.formatted(title, category, timelineAmount, safeUnit, pkg, description);
     }
 
     private String buildTemplatePRD(String title, String category, String timelineAmount,
                                      String timelineUnit, String description, String selectedPackage) {
+        String safeUnit = UNIT_MAP.getOrDefault(timelineUnit, timelineUnit);
         String pkg = switch (selectedPackage != null ? selectedPackage : "") {
             case "basic"   -> "Basic ($500–$2,500)";
             case "premium" -> "Premium ($10,000+)";
             default        -> "Standard ($2,500–$10,000)";
         };
         String timeline = (timelineAmount != null && !timelineAmount.isBlank())
-                ? timelineAmount + " " + timelineUnit : "To be determined";
+                ? timelineAmount + " " + safeUnit : "To be determined";
         String safeTitle = (title != null && !title.isBlank()) ? title : "Untitled Project";
         String safeDesc  = (description != null && !description.isBlank()) ? description : "To be provided.";
 
@@ -207,7 +212,10 @@ public class AiServiceImpl implements AiService {
                 (expert.getSkills() != null ? expert.getSkills().size() : 0) * 0.08 + completedJobs * 0.02);
         rating = Math.round(rating * 10.0) / 10.0;
 
-        String initials = Arrays.stream(expert.getFullName().split("\\s+"))
+        String safeName = (expert.getFullName() != null && !expert.getFullName().isBlank())
+                ? expert.getFullName() : "Unknown User";
+
+        String initials = Arrays.stream(safeName.split("\\s+"))
                 .filter(w -> !w.isEmpty())
                 .map(w -> String.valueOf(w.charAt(0)).toUpperCase())
                 .limit(2)
@@ -226,7 +234,7 @@ public class AiServiceImpl implements AiService {
 
         return ExpertSuggestionDto.builder()
                 .id(expert.getId())
-                .name(expert.getFullName())
+                .name(safeName)
                 .title(title)
                 .skills(expert.getSkills() != null ? expert.getSkills() : List.of())
                 .rating(rating)

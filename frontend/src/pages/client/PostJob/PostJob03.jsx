@@ -5,6 +5,7 @@ import Button from "@/components/ui/Button";
 import StepBar from "../../../components/ui/StepBar";
 import usePostJobStore from "../../../store/postJobStore";
 import { generatePRD, suggestExperts } from "../../../api/ai";
+import { createJob } from "../../../api/jobs";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -57,7 +58,7 @@ function SectionField({ icon, label, value, onChange, rows = 3, placeholder }) {
   );
 }
 
-function ExpertCard({ expert }) {
+function ExpertCard({ expert, isFallback }) {
   return (
     <div className="bg-white border border-gray-200 rounded-2xl p-5 hover:shadow-md transition-shadow flex flex-col">
       <div className="flex items-start gap-3 mb-3">
@@ -81,8 +82,16 @@ function ExpertCard({ expert }) {
         <span className="text-gray-500">⭐ {expert.rating} · {expert.jobs} jobs</span>
         <span className="font-semibold text-[#15153d]">{expert.rate}</span>
       </div>
-      <button className="w-full bg-[#15153d] hover:bg-[#1f1f5a] transition-colors text-white rounded-xl py-2.5 text-sm font-semibold">
-        Invite to Apply
+      <button
+        disabled={isFallback}
+        title={isFallback ? "Expert suggestions are illustrative only" : undefined}
+        className={`w-full rounded-xl py-2.5 text-sm font-semibold transition-colors ${
+          isFallback
+            ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+            : "bg-[#15153d] hover:bg-[#1f1f5a] text-white"
+        }`}
+      >
+        {isFallback ? "AI Suggestion Only" : "Invite to Apply"}
       </button>
     </div>
   );
@@ -108,28 +117,37 @@ export default function PostJob03() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGenerated,  setIsGenerated]  = useState(false);
   const [experts,      setExperts]      = useState([]);
+  const [isFallback,   setIsFallback]   = useState(false);
 
   // ── Initialize sections from store on mount ──
+  const initialPRD        = store.generatedPRD;
+  const initialExperts    = store.suggestedExperts;
+  const initialDesc       = store.description;
+  const initialCategory   = store.category;
+  const initialTimeline   = store.timelineAmount
+    ? `${store.timelineAmount} ${store.timelineUnit}`
+    : null;
+  const initialPkg        = PACKAGE_META[store.selectedPackage] || PACKAGE_META.basic;
+
   useEffect(() => {
-    if (store.generatedPRD) {
-      setAiContent(store.generatedPRD);
-      setExperts(store.suggestedExperts || []);
+    if (initialPRD) {
+      setAiContent(initialPRD);
+      setExperts(initialExperts || []);
       setIsAIMode(true);
       setIsGenerated(true);
     } else {
-      setObjective(store.description || "");
+      setObjective(initialDesc);
       setRequirements(
-        `• Domain: ${store.category}\n• Timeline: ${timeline || "To be determined"}\n• Budget Package: ${pkg.label} (${pkg.range})`
+        `• Domain: ${initialCategory}\n• Timeline: ${initialTimeline || "To be determined"}\n• Budget Package: ${initialPkg.label} (${initialPkg.range})`
       );
       setScope(
         `1. Requirements analysis and solution architecture\n2. Core implementation and iterative development\n3. Testing, validation, and performance benchmarking\n4. Documentation, handoff, and deployment support`
       );
       setExpectations(
-        `Experienced AI specialist with a proven track record in ${store.category}. Prior published work or portfolio projects in the relevant domain are strongly preferred.`
+        `Experienced AI specialist with a proven track record in ${initialCategory}. Prior published work or portfolio projects in the relevant domain are strongly preferred.`
       );
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialPRD, initialExperts, initialDesc, initialCategory, initialTimeline, initialPkg.label, initialPkg.range]);
 
   // ── Build full document text from structured sections ──
   const buildDocumentFromSections = () =>
@@ -160,6 +178,7 @@ export default function PostJob03() {
         ]);
         prd = prdRes.prd;
         expertList = expertsRes.experts;
+        setIsFallback(false);
       } catch {
         await new Promise((r) => setTimeout(r, 2000));
         prd =
@@ -170,6 +189,7 @@ export default function PostJob03() {
           `- Recommended evaluation benchmarks for ${store.category}\n` +
           `- Identified potential technical risks and mitigation strategies`;
         expertList = EXPERT_POOL[store.category] || EXPERT_POOL["Natural Language Processing"];
+        setIsFallback(true);
       }
 
       setAiContent(prd);
@@ -185,10 +205,38 @@ export default function PostJob03() {
     }
   };
 
-  const handlePostJobNow = () => {
-    toast.success("Project posted successfully!");
-    store.reset();
-    navigate("/dashboard");
+  const handlePostJobNow = async () => {
+    try {
+      const BUDGET_MAP = { basic: 1000, standard: 5000, premium: 15000 };
+
+      const TIMELINE_UNIT_MAP = { Tháng: "months", Tuần: "weeks", Ngày: "days" };
+      let deadline = null;
+      if (store.timelineAmount && store.timelineUnit) {
+        const d = new Date();
+        const amount = parseInt(store.timelineAmount, 10);
+        const unit = TIMELINE_UNIT_MAP[store.timelineUnit] ?? "months";
+        if (unit === "months") d.setMonth(d.getMonth() + amount);
+        else if (unit === "weeks") d.setDate(d.getDate() + amount * 7);
+        else d.setDate(d.getDate() + amount);
+        deadline = d.toISOString().split("T")[0];
+      }
+
+      const payload = {
+        title: store.title,
+        description: isAIMode ? aiContent : buildDocumentFromSections(),
+        budget: BUDGET_MAP[store.selectedPackage] ?? 1000,
+        deadline,
+        skills: [store.category],
+      };
+
+      await createJob(payload);
+      toast.success("Project posted successfully!");
+      store.reset();
+      navigate("/dashboard");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to post job. Please try again.");
+    }
   };
 
   return (
@@ -348,9 +396,7 @@ export default function PostJob03() {
                 Based on your requirements, we found {experts.length} experts with high compatibility scores.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {experts.map((expert) => (
-                  <ExpertCard key={expert.id} expert={expert} />
-                ))}
+                {experts.map((e) => <ExpertCard key={e.id} expert={e} isFallback={isFallback} />)}
               </div>
             </div>
           )}
