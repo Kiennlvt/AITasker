@@ -31,7 +31,7 @@ import ProtectedRoute from "./components/layout/ProtectedRoute";
 // ==========================================
 // ĐOẠN THEM MỚI 1: IMPORT CÁC TRANG ADMIN CỦA ÔNG
 // ==========================================
-import AdminLayout from "./pages/admin/AdminLayout";
+import AdminLayout from "./components/layout/AdminLayout";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import ManageUsersPage from "./pages/admin/ManageUsersPage";
 import ManageJobsPage from "./pages/admin/ManageJobsPage";
