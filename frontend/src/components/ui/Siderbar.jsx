@@ -1,7 +1,7 @@
 import { CircleHelp, LogOut } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom"; // 1. Import thêm useLocation
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import logo from "../../assets/images/logo01.png";
-import { Link } from "react-router-dom";
+import useAuthStore from "../../store/authStore";
 
 const THEME_STYLES = {
   orange: {
@@ -23,7 +23,14 @@ export default function Sidebar({
   portalName = "Portal",
 }) {
   const activeTheme = THEME_STYLES[theme] || THEME_STYLES.orange;
-  const location = useLocation(); // 2. Lấy URL hiện tại của trình duyệt
+  const location = useLocation();
+  const navigate = useNavigate();
+  const logout = useAuthStore((s) => s.logout);
+
+  const handleSignOut = () => {
+    logout();
+    navigate("/login");
+  };
 
   return (
     <aside className={`w-[250px] border-r border-gray-200 flex flex-col justify-between h-screen sticky top-0 transition-colors duration-300`}>
@@ -79,9 +86,12 @@ export default function Sidebar({
         </button>
 
         
-          <Link to="/login" className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl text-[#2f2f4f] transition-all ${activeTheme.hoverLink}`}>
+          <button
+            onClick={handleSignOut}
+            className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl text-[#2f2f4f] transition-all ${activeTheme.hoverLink}`}
+          >
             <LogOut size={20} /> Sign Out
-          </Link>
+          </button>
         
 
       </div>
