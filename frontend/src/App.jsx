@@ -1,3 +1,4 @@
+
 // Entry point — router sẽ được mount ở đây sau
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Error404 from "./pages/404/404";
@@ -26,6 +27,16 @@ import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import JobDetail from "./pages/public/JobDetail";
 import Authentication from "./components/layout/Authentication";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
+
+// ==========================================
+// ĐOẠN THEM MỚI 1: IMPORT CÁC TRANG ADMIN CỦA ÔNG
+// ==========================================
+import AdminLayout from "./pages/admin/AdminLayout";
+import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
+import ManageUsersPage from "./pages/admin/ManageUsersPage";
+import ManageJobsPage from "./pages/admin/ManageJobsPage";
+import StatisticsPage from "./pages/admin/StatisticsPage";
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -67,6 +78,18 @@ export default function App() {
             <Route path="/my-tasks" element={<MyTask />} />
             <Route path="/expert-profile" element={<ProfileExpert />} />
           </Route>
+        </Route>
+
+        {/* ==========================================
+            ĐOẠN THEM MỚI 2: CỤM ROUTE ADMIN PANEL
+            (Tạm thời để thô chưa bọc ProtectedRoute role="ADMIN" để ông dễ test giao diện trước)
+           ========================================== */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboardPage />} />
+          <Route path="dashboard" element={<AdminDashboardPage />} />
+          <Route path="users" element={<ManageUsersPage />} />
+          <Route path="jobs" element={<ManageJobsPage />} />
+          <Route path="statistics" element={<StatisticsPage />} />
         </Route>
 
         <Route path="*" element={<Error404 />} />

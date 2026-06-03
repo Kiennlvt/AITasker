@@ -18,14 +18,25 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password) { toast.error("Please enter email and password"); return; }
+    if (!email || !password) { 
+      toast.error("Please enter email and password"); 
+      return; 
+    }
     setLoading(true);
     try {
       const data = await login(email, password);
       setAuth(data);
       toast.success(`Welcome back, ${data.fullName}!`);
-      if (data.role === "EXPERT") navigate("/dashboard-expert");
-      else navigate("/dashboard");
+      
+      // Luồng điều hướng phân quyền chuẩn chỉ cho cả 3 nhóm đối tượng
+      if (data.role === "ADMIN") {
+        navigate("/admin/dashboard");
+      } else if (data.role === "EXPERT") {
+        navigate("/dashboard-expert");
+      } else {
+        navigate("/dashboard");
+      }
+
     } catch (err) {
       const msg = err.response?.data?.message || "Login failed";
       toast.error(msg);
@@ -35,14 +46,14 @@ export default function LoginPage() {
   };
 
   return (
-    <section className="flex items-center justify-center bg-[#1f3348] px-8 py-12">
+    <section className="flex min-h-screen items-center justify-center bg-[#1f3348] px-8 py-12">
       <div className="w-full max-w-[430px]">
         <div className="mb-5">
           <h1 className="flex items-center gap-2 text-2xl font-black text-white">
-            <HiSparkles className="text-[22px] text-orange-500" />
+            <HiSparkles className="text-[22px] text-[#f97316]" />
             AI-Tasker
           </h1>
-          <p className="mt-3 text-sm font-bold text-orange-500">
+          <p className="mt-3 text-sm font-bold text-[#f97316]">
             Welcome back. Enter your credentials to access
             <br />
             the marketplace.
@@ -51,20 +62,20 @@ export default function LoginPage() {
 
         <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
           <div>
-            <label className="mb-2 block text-xs font-black text-orange-500">Email</label>
+            <label className="mb-2 block text-xs font-black text-[#f97316]">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@company.com"
-              className="w-full rounded-md border border-slate-300 bg-[#f7f7fb] px-4 py-3 text-sm outline-none focus:border-orange-500"
+              className="w-full rounded-md border border-slate-300 bg-[#f7f7fb] px-4 py-3 text-sm outline-none focus:border-[#f97316] transition-colors"
             />
           </div>
 
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <label className="text-xs font-black text-orange-500">Password</label>
-              <Link to="/forgot-password" className="text-xs font-black text-orange-500">
+              <label className="text-xs font-black text-[#f97316]">Password</label>
+              <Link to="/forgot-password" className="text-xs font-black text-[#f97316]">
                 Forgot Password?
               </Link>
             </div>
@@ -74,7 +85,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full rounded-md border border-slate-300 bg-[#f7f7fb] px-4 py-3 pr-10 text-sm outline-none focus:border-orange-500"
+                className="w-full rounded-md border border-slate-300 bg-[#f7f7fb] px-4 py-3 pr-10 text-sm outline-none focus:border-[#f97316] transition-colors"
               />
               <button
                 type="button"
@@ -99,9 +110,10 @@ export default function LoginPage() {
           </div>
 
           <Button
-            className="w-full rounded-md"
+            className="w-full rounded-md font-black text-sm py-3 transition-all"
             type="submit"
             disabled={loading}
+            style={{ backgroundColor: loading ? "#cbd5e1" : "#f97316" }}
           >
             {loading ? "Signing in..." : <>Sign In <span className="ml-1">↪</span></>}
           </Button>
@@ -114,17 +126,17 @@ export default function LoginPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <button className="flex items-center justify-center gap-3 bg-white px-4 py-3 text-xs font-bold text-slate-700 shadow-sm">
-            <FcGoogle className="text-xl" /> Sign up with Google
+          <button className="flex items-center justify-center gap-3 bg-white px-4 py-3 text-xs font-bold text-slate-700 shadow-xs border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
+            <FcGoogle className="text-xl" /> Google
           </button>
-          <button className="flex items-center justify-center gap-3 bg-[#2f6df6] px-4 py-3 text-xs font-bold text-white shadow-sm">
-            <FaFacebook className="text-xl text-white" /> Sign up with Facebook
+          <button className="flex items-center justify-center gap-3 bg-[#1877F2] px-4 py-3 text-xs font-bold text-white shadow-xs rounded-md hover:bg-[#166FE5] transition-colors">
+            <FaFacebook className="text-xl text-white" /> Facebook
           </button>
         </div>
 
         <p className="mt-7 text-center text-xs text-slate-400">
           New to the marketplace?{" "}
-          <Link to="/register" className="font-bold text-orange-500">Sign Up</Link>
+          <Link to="/register" className="font-bold text-[#f97316]">Sign Up</Link>
         </p>
       </div>
     </section>
