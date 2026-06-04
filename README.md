@@ -16,7 +16,7 @@ aitasker-fullstack/
 |-------|-----------|
 | Frontend | React 19, Vite 8, TailwindCSS 3, Zustand, React Router 7, Axios, React Hot Toast |
 | Backend | Spring Boot 3.3, Java 21, Spring Security, Spring WebSocket |
-| Auth | JWT (JJWT 0.12) — access token 24h, refresh token 7d |
+| Auth | JWT (JJWT 0.12) — access token 24h, refresh token 7d + OAuth2 Social Login (Google, Facebook) |
 | ORM | Spring Data JPA + Hibernate |
 | Database | PostgreSQL 17 |
 | Real-time | STOMP over SockJS at `/ws` |
@@ -114,7 +114,7 @@ src/
 │   └── ui/                # Button, Badge, StatCard, DataTable, Header,
 │                          #   Sidebar, SearchBar, StepBar, PricingCard
 ├── pages/
-│   ├── auth/              # LoginPage, RegisterPage, ForgotPasswordPage
+│   ├── auth/              # LoginPage, RegisterPage, ForgotPasswordPage, OAuth2CallbackPage, ChooseRolePage
 │   ├── client/            # DashboardClient, ManageProposals, ProfileClient
 │   │   ├── PostJob/       # PostJob01 → PostJob02 → PostJob03 (multi-step)
 │   │   └── Project/       # Project (list), ProjectDetailClient
@@ -302,6 +302,59 @@ app:
     refresh-expiration-ms: 604800000     # 7d
   cors:
     allowed-origins: http://localhost:3000,http://localhost:5173
+```
+
+---
+
+## OAuth2 Social Login
+
+AITasker supports social login via Google and Facebook using Spring Security OAuth2.
+
+### Setting up credentials
+
+**Google:**
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/) and create a project.
+2. Enable the **Google+ API** (or **Google Identity**) under APIs & Services.
+3. Create OAuth 2.0 credentials (Web Application type).
+4. Add `http://localhost:8080/login/oauth2/code/google` as an authorized redirect URI.
+5. Copy the Client ID and Client Secret.
+
+**Facebook:**
+
+1. Go to [Facebook Developers](https://developers.facebook.com/) and create an app.
+2. Add the **Facebook Login** product and configure the OAuth redirect URI:
+   `http://localhost:8080/login/oauth2/code/facebook`
+3. Copy the App ID (Client ID) and App Secret (Client Secret).
+
+> **Note:** A Facebook app in Development mode only allows the app's Admin and Developer accounts to log in. To allow any user, the app must be submitted for review and switched to Live mode.
+
+### Configuration
+
+Do NOT hardcode `client-id` or `client-secret` values directly in `application.yml`. Always pass them via environment variables:
+
+```yaml
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+          facebook:
+            client-id: ${FACEBOOK_CLIENT_ID}
+            client-secret: ${FACEBOOK_CLIENT_SECRET}
+```
+
+Set the variables in your environment before starting the backend:
+
+```bash
+# PowerShell
+$env:GOOGLE_CLIENT_ID     = "your-google-client-id"
+$env:GOOGLE_CLIENT_SECRET = "your-google-client-secret"
+$env:FACEBOOK_CLIENT_ID   = "your-facebook-app-id"
+$env:FACEBOOK_CLIENT_SECRET = "your-facebook-app-secret"
 ```
 
 ---

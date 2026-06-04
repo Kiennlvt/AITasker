@@ -27,6 +27,7 @@ import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import JobDetail from "./pages/public/JobDetail";
 import Authentication from "./components/layout/Authentication";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
+import OAuth2CallbackPage from "./pages/auth/OAuth2CallbackPage";
 
 // ==========================================
 // ĐOẠN THEM MỚI 1: IMPORT CÁC TRANG ADMIN CỦA ÔNG
@@ -91,6 +92,8 @@ export default function App() {
           <Route path="jobs" element={<ManageJobsPage />} />
           <Route path="statistics" element={<StatisticsPage />} />
         </Route>
+
+        <Route path="/oauth2/callback" element={<OAuth2CallbackPage />} />
 
         <Route path="*" element={<Error404 />} />
       </Routes>
