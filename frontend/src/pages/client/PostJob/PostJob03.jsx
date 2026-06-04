@@ -15,6 +15,107 @@ const PACKAGE_META = {
   premium:  { label: "Premium",  range: "$10,000+",       color: "bg-orange-100 text-orange-700" },
 };
 
+// ─── Dynamic PRD helpers (package-aware) ─────────────────────────────────────
+
+const SCOPE_BY_PACKAGE = {
+  basic: (cat) =>
+    `1. Requirements scoping and environment setup\n` +
+    `2. Core ${cat} implementation\n` +
+    `3. Basic testing and bug fixes\n` +
+    `4. Delivery with brief documentation`,
+
+  standard: (cat) =>
+    `1. Requirements analysis and solution architecture design\n` +
+    `2. Iterative ${cat} development with bi-weekly milestone reviews\n` +
+    `3. Integration and performance optimization\n` +
+    `4. User acceptance testing (UAT) and feedback cycles\n` +
+    `5. Documentation, knowledge transfer, and deployment support`,
+
+  premium: (cat) =>
+    `1. Discovery workshop: in-depth requirements gathering, feasibility study, and architecture design\n` +
+    `2. Prototype / proof-of-concept with stakeholder sign-off\n` +
+    `3. Iterative ${cat} development with weekly check-ins and demos\n` +
+    `4. Comprehensive testing: unit, integration, load, and security testing\n` +
+    `5. Compliance review (data privacy, security standards) and risk mitigation\n` +
+    `6. Production deployment with CI/CD pipeline setup\n` +
+    `7. Full technical documentation, team training, and 30-day post-launch support`,
+};
+
+const EXPECTATIONS_BY_PACKAGE = {
+  basic: (cat) =>
+    `Competent ${cat} practitioner with 1–2 years of hands-on experience. ` +
+    `Ability to work independently and deliver within the agreed timeline.`,
+
+  standard: (cat) =>
+    `Experienced ${cat} specialist with 3+ years of proven project delivery. ` +
+    `Strong communication skills, bi-weekly progress updates, and a prior work portfolio are required. ` +
+    `Familiarity with modern tooling and best practices in the domain is expected.`,
+
+  premium: (cat) =>
+    `Senior ${cat} expert with 5+ years of enterprise-grade project experience. ` +
+    `Must demonstrate deep technical expertise, strong stakeholder communication, and the ability to lead architecture decisions independently. ` +
+    `A portfolio of large-scale projects, prior publications, or notable open-source contributions are strongly preferred. ` +
+    `Experience with compliance, security standards, and cross-functional team collaboration is required.`,
+};
+
+const TECH_REQS_BY_PACKAGE = {
+  basic: (d) =>
+    `• Domain: ${d.category}\n` +
+    `• Timeline: ${d.timeline || "To be determined"}\n` +
+    `• Package: Basic (${PACKAGE_META.basic.range})`,
+
+  standard: (d) =>
+    `• Domain: ${d.category}\n` +
+    `• Timeline: ${d.timeline || "To be determined"}\n` +
+    `• Package: Standard (${PACKAGE_META.standard.range})\n` +
+    `• Progress cadence: bi-weekly milestone reports\n` +
+    `• Communication: async + weekly sync call`,
+
+  premium: (d) =>
+    `• Domain: ${d.category}\n` +
+    `• Timeline: ${d.timeline || "To be determined"}\n` +
+    `• Package: Premium (${PACKAGE_META.premium.range})\n` +
+    `• Deliverables: full technical documentation, production deployment, post-launch support\n` +
+    `• Performance benchmarks: defined during discovery workshop\n` +
+    `• Compliance: data privacy and security standards adherence required\n` +
+    `• Communication: weekly sync calls + dedicated project channel`,
+};
+
+function buildDynamicPRD({ title, category, objective, scope, expectations, pkg, timeline }) {
+  const pkgKey = pkg || "basic";
+  const generatedScope       = scope?.trim()        || SCOPE_BY_PACKAGE[pkgKey](category);
+  const generatedExpectations = expectations?.trim() || EXPECTATIONS_BY_PACKAGE[pkgKey](category);
+  const techReqs             = TECH_REQS_BY_PACKAGE[pkgKey]({ category, timeline });
+
+  let doc =
+    `# Project Requirements Document\n` +
+    `## ${title || "AI Project"}\n\n` +
+    `---\n\n` +
+    `## 🎯 Objective\n` +
+    `${objective?.trim() || `Seeking an experienced ${category} specialist to deliver a high-quality AI-powered solution tailored to our business needs.`}\n\n` +
+    `## ⚙️ Technical Requirements\n${techReqs}\n\n` +
+    `## 📋 Scope of Work\n${generatedScope}\n\n` +
+    `## 👤 Candidate Expectations\n${generatedExpectations}\n`;
+
+  if (pkgKey === "standard" || pkgKey === "premium") {
+    doc +=
+      `\n## 📊 Success Metrics\n` +
+      `- All deliverables pass defined acceptance criteria\n` +
+      `- Performance benchmarks achieved within the agreed timeline\n` +
+      `- Clear handover documentation and knowledge transfer completed\n`;
+  }
+
+  if (pkgKey === "premium") {
+    doc +=
+      `\n## ⚠️ Risk & Mitigation\n` +
+      `- Data privacy and security handled per applicable compliance standards\n` +
+      `- Defined rollback / fallback plan in case of integration issues\n` +
+      `- Weekly risk review and escalation process during project lifecycle\n`;
+  }
+
+  return doc;
+}
+
 const EXPERT_POOL = {
   "Natural Language Processing": [
     { id: "e1", name: "Dr. Aris Thorn",  title: "LLM Research Lead",       skills: ["NLP", "Fine-tuning", "RAG"],        rating: 4.9, jobs: 47, rate: "$120/hr", initials: "AT", match: 97, color: "bg-orange-100 text-orange-600" },
@@ -140,12 +241,7 @@ export default function PostJob03() {
       setRequirements(
         `• Domain: ${initialCategory}\n• Timeline: ${initialTimeline || "To be determined"}\n• Budget Package: ${initialPkg.label} (${initialPkg.range})`
       );
-      setScope(
-        `1. Requirements analysis and solution architecture\n2. Core implementation and iterative development\n3. Testing, validation, and performance benchmarking\n4. Documentation, handoff, and deployment support`
-      );
-      setExpectations(
-        `Experienced AI specialist with a proven track record in ${initialCategory}. Prior published work or portfolio projects in the relevant domain are strongly preferred.`
-      );
+      // Scope and Expectations are left empty — AI will generate them on Optimize
     }
   }, [initialPRD, initialExperts, initialDesc, initialCategory, initialTimeline, initialPkg.label, initialPkg.range]);
 
@@ -167,6 +263,8 @@ export default function PostJob03() {
         timelineAmount: store.timelineAmount,
         timelineUnit: store.timelineUnit,
         description: objective || store.description,
+        scope,
+        expectations,
         selectedPackage: store.selectedPackage,
       };
 
@@ -180,18 +278,26 @@ export default function PostJob03() {
         expertList = expertsRes.experts;
         setIsFallback(false);
       } catch {
-        await new Promise((r) => setTimeout(r, 2000));
-        prd =
-          buildDocumentFromSections() +
-          `\n\n---\n## AI Enhancements\n` +
-          `- Clarified success metrics and KPIs for each deliverable\n` +
-          `- Added compliance and data handling considerations\n` +
-          `- Recommended evaluation benchmarks for ${store.category}\n` +
-          `- Identified potential technical risks and mitigation strategies`;
+        await new Promise((r) => setTimeout(r, 1500));
+        const timelineStr = store.timelineAmount
+          ? `${store.timelineAmount} ${store.timelineUnit}`
+          : null;
+        prd = buildDynamicPRD({
+          title:        store.title,
+          category:     store.category,
+          objective:    objective || store.description,
+          scope,
+          expectations,
+          pkg:          store.selectedPackage,
+          timeline:     timelineStr,
+        });
         expertList = EXPERT_POOL[store.category] || EXPERT_POOL["Natural Language Processing"];
         setIsFallback(true);
       }
 
+      // Sync generated scope/expectations back to form fields so user can edit
+      setScope("");
+      setExpectations("");
       setAiContent(prd);
       setExperts(expertList);
       setIsAIMode(true);
@@ -370,7 +476,7 @@ export default function PostJob03() {
                   value={scope}
                   onChange={setScope}
                   rows={5}
-                  placeholder="List the main deliverables and work phases..."
+                  placeholder="Leave blank and click ✨ Optimize with AI — we'll generate this based on your package level. Or type your own deliverables here."
                 />
 
                 <SectionField
@@ -379,7 +485,7 @@ export default function PostJob03() {
                   value={expectations}
                   onChange={setExpectations}
                   rows={3}
-                  placeholder="Describe the ideal expert profile and required experience..."
+                  placeholder="Leave blank and click ✨ Optimize with AI — we'll generate this based on your package level. Or describe the ideal expert profile here."
                 />
               </div>
             )}
