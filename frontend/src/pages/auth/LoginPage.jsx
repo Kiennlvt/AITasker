@@ -16,6 +16,14 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
 
+  const handleGoogleLogin = () => {
+    window.location.href = "http://localhost:8080/oauth2/authorization/google";
+  };
+
+  const handleFacebookLogin = () => {
+    window.location.href = "http://localhost:8080/oauth2/authorization/facebook";
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) { 
@@ -126,10 +134,18 @@ export default function LoginPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <button className="flex items-center justify-center gap-3 bg-white px-4 py-3 text-xs font-bold text-slate-700 shadow-xs border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            className="flex items-center justify-center gap-3 bg-white px-4 py-3 text-xs font-bold text-slate-700 shadow-xs border border-slate-200 rounded-md hover:bg-slate-50 transition-colors"
+          >
             <FcGoogle className="text-xl" /> Google
           </button>
-          <button className="flex items-center justify-center gap-3 bg-[#1877F2] px-4 py-3 text-xs font-bold text-white shadow-xs rounded-md hover:bg-[#166FE5] transition-colors">
+          <button
+            type="button"
+            onClick={handleFacebookLogin}
+            className="flex items-center justify-center gap-3 bg-[#1877F2] px-4 py-3 text-xs font-bold text-white shadow-xs rounded-md hover:bg-[#166FE5] transition-colors"
+          >
             <FaFacebook className="text-xl text-white" /> Facebook
           </button>
         </div>

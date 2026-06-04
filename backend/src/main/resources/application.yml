@@ -4,6 +4,26 @@ server:
 spring:
   profiles:
     active: dev
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:NOT_CONFIGURED}
+            client-secret: ${GOOGLE_CLIENT_SECRET:NOT_CONFIGURED}
+            scope: email, profile
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+          facebook:
+            client-id: ${FACEBOOK_CLIENT_ID:NOT_CONFIGURED}
+            client-secret: ${FACEBOOK_CLIENT_SECRET:NOT_CONFIGURED}
+            scope: email, public_profile
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+        provider:
+          facebook:
+            authorization-uri: https://www.facebook.com/v18.0/dialog/oauth
+            token-uri: https://graph.facebook.com/v18.0/oauth/access_token
+            user-info-uri: https://graph.facebook.com/me?fields=id,name,email,picture
+            user-name-attribute: id
   datasource:
     url: jdbc:postgresql://localhost:5432/aitasker_db
     username: aitasker
@@ -35,3 +55,5 @@ app:
     allowed-origins: http://localhost:3000,http://localhost:3001,http://localhost:5173,http://localhost:5174
   ai:
     anthropic-api-key: ${ANTHROPIC_API_KEY:}
+  frontend:
+    url: ${FRONTEND_URL:http://localhost:3000}
