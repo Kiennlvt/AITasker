@@ -38,13 +38,13 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         String avatarUrl = extractAvatar(registrationId, attributes);
 
         userRepository.findByEmail(email).orElseGet(() -> userRepository.save(
-            User.builder()
-                .email(email)
-                .fullName(name != null ? name : email)
-                .password(passwordEncoder.encode(UUID.randomUUID().toString()))
-                .role(UserRole.CLIENT)
-                .avatarUrl(avatarUrl)
-                .build()
+                User.builder()
+                        .email(email)
+                        .fullName(name != null ? name : email)
+                        .password(passwordEncoder.encode(UUID.randomUUID().toString()))
+                        .role(UserRole.CLIENT)
+                        .avatarUrl(avatarUrl)
+                        .build()
         ));
 
         return oAuth2User;

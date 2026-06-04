@@ -29,7 +29,11 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
                                         HttpServletResponse response,
                                         Authentication authentication) throws IOException {
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
-        String email = oAuth2User.getAttribute("email");
+        String rawEmail = oAuth2User.getAttribute("email");
+        String facebookId = oAuth2User.getAttribute("id");
+        String email = (rawEmail == null || rawEmail.isBlank()) && facebookId != null
+                ? facebookId + "@facebook.com"
+                : rawEmail;
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found after OAuth2 login: " + email));
