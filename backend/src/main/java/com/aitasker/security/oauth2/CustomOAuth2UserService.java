@@ -34,10 +34,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         String avatarUrl = extractAvatar(registrationId, attributes);
 
         if (email == null || email.isBlank()) {
-            throw new OAuth2AuthenticationException(
-                new OAuth2Error("email_not_found"),
-                "Email not returned by provider: " + registrationId
-            );
+            String facebookId = (String) attributes.get("id");
+            email = facebookId + "@facebook.com";
         }
 
         userRepository.findByEmail(email).orElseGet(() -> userRepository.save(
