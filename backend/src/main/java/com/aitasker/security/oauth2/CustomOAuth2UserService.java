@@ -29,14 +29,13 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         String registrationId = userRequest.getClientRegistration().getRegistrationId();
         Map<String, Object> attributes = oAuth2User.getAttributes();
 
-        String email = (String) attributes.get("email");
+        String rawEmail = (String) attributes.get("email");
+        String facebookId = (String) attributes.get("id");
+        String email = (rawEmail == null || rawEmail.isBlank())
+                ? facebookId + "@facebook.com"
+                : rawEmail;
         String name = (String) attributes.get("name");
         String avatarUrl = extractAvatar(registrationId, attributes);
-
-        if (email == null || email.isBlank()) {
-            String facebookId = (String) attributes.get("id");
-            email = facebookId + "@facebook.com";
-        }
 
         userRepository.findByEmail(email).orElseGet(() -> userRepository.save(
             User.builder()
