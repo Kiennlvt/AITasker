@@ -1,11 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Check } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import ServiceCard from "../../components/common/ServiceCard";
 import FeaturedServiceCard from "../../components/common/FeaturedServiceCard";
 import { getServices } from "../../api/services";
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=800";
 const PAGE_SIZE = 12;
+
+const MAIN_CATEGORIES = ["NLP & LLMs", "Computer Vision", "Data Engineering", "Reinforcement Learning"];
+
+function matchesCategory(tags, cat) {
+  if (cat === "Other") {
+    return !MAIN_CATEGORIES.some((mc) =>
+      tags.some((t) => t.toLowerCase().includes(mc.toLowerCase()))
+    );
+  }
+  return tags.some((t) => t.toLowerCase().includes(cat.toLowerCase()));
+}
 
 const SORT_OPTIONS = [
   { label: "Featured",             value: "createdAt,desc"   },
@@ -35,6 +47,10 @@ export default function Services() {
   const [sort, setSort] = useState(SORT_OPTIONS[0]);
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const [searchParams] = useSearchParams();
+  const selectedCategories = searchParams.getAll("category");
+  const maxPrice = Number(searchParams.get("maxPrice") || 10000);
+  const minRating = Number(searchParams.get("minRating") || 0);
 
   useEffect(() => {
     const handler = (e) => {
@@ -63,7 +79,14 @@ export default function Services() {
     setOpen(false);
   }
 
-  const cards = services.map(toCardShape);
+  const allCards = services.map(toCardShape);
+  const cards = allCards.filter((card) => {
+    const catOk = selectedCategories.length === 0 ||
+      selectedCategories.some((cat) => matchesCategory(card.tags ?? [], cat));
+    const priceOk = Number(String(card.price).replace(/[$,]/g, "")) <= maxPrice;
+    const ratingOk = !minRating || Number(card.rating) >= minRating;
+    return catOk && priceOk && ratingOk;
+  });
 
   return (
     <div>
@@ -118,7 +141,9 @@ export default function Services() {
         {loading && <p className="text-sm text-gray-400 py-8">Loading services...</p>}
 
         {!loading && cards.length === 0 && (
-          <p className="text-sm text-gray-400 py-8">No services available.</p>
+          <p className="text-sm text-gray-400 py-8">
+            {allCards.length === 0 ? "No services available." : "No services match the current filters."}
+          </p>
         )}
 
         {!loading && cards.length > 0 && (
