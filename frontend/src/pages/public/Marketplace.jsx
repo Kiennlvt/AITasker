@@ -1,9 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Check } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import JobCard from "../../components/common/JobCard";
 import { getJobs } from "../../api/jobs";
 
 const PAGE_SIZE = 12;
+
+const MAIN_CATEGORIES = ["NLP & LLMs", "Computer Vision", "Data Engineering", "Reinforcement Learning"];
+
+function matchesCategory(tags, cat) {
+  if (cat === "Other") {
+    return !MAIN_CATEGORIES.some((mc) =>
+      tags.some((t) => t.toLowerCase().includes(mc.toLowerCase()))
+    );
+  }
+  return tags.some((t) => t.toLowerCase().includes(cat.toLowerCase()));
+}
 
 const SORT_OPTIONS = [
   { label: "Latest",              value: "createdAt,desc" },
@@ -21,6 +33,9 @@ export default function Marketplace() {
   const [sort, setSort] = useState(SORT_OPTIONS[0]);
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const [searchParams] = useSearchParams();
+  const selectedCategories = searchParams.getAll("category");
+  const maxPrice = Number(searchParams.get("maxPrice") || 10000);
 
   useEffect(() => {
     const handler = (e) => {
@@ -105,13 +120,21 @@ export default function Marketplace() {
           <p className="text-sm text-gray-400 py-8">No open jobs at the moment.</p>
         )}
 
-        {!loading && jobs.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {jobs.map((job) => (
-              <JobCard key={job.id} job={job} />
-            ))}
-          </div>
-        )}
+        {!loading && jobs.length > 0 && (() => {
+          const filtered = jobs.filter((job) => {
+            const catOk = selectedCategories.length === 0 ||
+              selectedCategories.some((cat) => matchesCategory(job.skills ?? [], cat));
+            const priceOk = (job.budget ?? 0) <= maxPrice;
+            return catOk && priceOk;
+          });
+          return filtered.length === 0 ? (
+            <p className="text-sm text-gray-400 py-8">No jobs match the current filters.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filtered.map((job) => <JobCard key={job.id} job={job} />)}
+            </div>
+          );
+        })()}
 
         {totalPages > 1 && (
           <div className="mt-12 flex justify-center">

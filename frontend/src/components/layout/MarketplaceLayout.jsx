@@ -1,22 +1,26 @@
 import React from "react";
-import Button from "../ui/Button";
 import SidebarMarketplace from "../ui/SidebarMarketplace";
 import Header from "../ui/Header";
 import SearchBar from "../ui/Searchbar";
 import { Outlet } from "react-router-dom";
-import { LayoutDashboard, Store } from "lucide-react";
+import { LayoutDashboard, Store, ShoppingBag } from "lucide-react";
 
 export default function PublicLayout() {
-    const menuItems = [
-    {
-      name: "Dashboard",
-      icon: <LayoutDashboard size={20} />,
-      path: "/dashboard",
-    },
+  const menuItems = [
     {
       name: "Marketplace",
       icon: <Store size={20} />,
       path: "/marketplace",
+    },
+    {
+      name: "Services",
+      icon: <ShoppingBag size={20} />,
+      path: "/services",
+    },
+    {
+      name: "Dashboard",
+      icon: <LayoutDashboard size={20} />,
+      path: "/dashboard",
     },
   ];
   return (
