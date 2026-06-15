@@ -3,9 +3,10 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
 import { getServiceById } from "../../api/services";
-import { FiCode, FiCpu, FiActivity, FiHome, FiClock, FiUsers, FiBookmark } from "react-icons/fi";
+import { FiCode, FiCpu, FiActivity, FiHome, FiClock, FiUsers, FiBookmark, FiMessageSquare } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { checkSaved, saveService, unsaveService } from "../../api/savedService";
+import { findOrCreateDirect } from "../../api/conversations";
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=800";
 
@@ -16,6 +17,7 @@ export default function ServiceDetail() {
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [savingLoading, setSavingLoading] = useState(false);
+  const [messagingLoading, setMessagingLoading] = useState(false);
 
   const isLoggedIn = !!localStorage.getItem("accessToken");
 
@@ -52,6 +54,24 @@ export default function ServiceDetail() {
       toast.error("Có lỗi xảy ra, vui lòng thử lại");
     } finally {
       setSavingLoading(false);
+    }
+  };
+
+  const handleMessageExpert = async () => {
+    if (!isLoggedIn) {
+      toast("Vui lòng đăng nhập để nhắn tin", { icon: "🔒" });
+      navigate("/login");
+      return;
+    }
+    if (!service?.expertId) return;
+    setMessagingLoading(true);
+    try {
+      const result = await findOrCreateDirect(service.expertId);
+      navigate(`/messages?conversationId=${result.conversationId}`);
+    } catch {
+      toast.error("Không thể mở cuộc trò chuyện");
+    } finally {
+      setMessagingLoading(false);
     }
   };
 
@@ -131,6 +151,15 @@ export default function ServiceDetail() {
             <Button className="mt-6 w-full rounded-full py-4 text-base">Order Now</Button>
             <Button
               className="mt-6 w-full rounded-full py-4 text-base flex items-center justify-center gap-2"
+              variant="secondary"
+              onClick={handleMessageExpert}
+              disabled={messagingLoading}
+            >
+              <FiMessageSquare />
+              {messagingLoading ? "Đang mở..." : "Message Expert"}
+            </Button>
+            <Button
+              className="mt-3 w-full rounded-full py-4 text-base flex items-center justify-center gap-2"
               variant="secondary"
               onClick={handleSaveToggle}
               disabled={savingLoading}

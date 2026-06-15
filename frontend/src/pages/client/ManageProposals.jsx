@@ -1,19 +1,22 @@
 import { useEffect, useState } from "react";
 import { SlidersHorizontal, ArrowUpDown, Star, Sparkles, ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import MessagesIcon from "../../components/ui/MesageIcon";
 import Button from "../../components/ui/Button";
 import { getMyJobs } from "../../api/jobs";
 import { getProposalsByJob, acceptProposal, rejectProposal } from "../../api/proposals";
+import { findOrCreateDirect } from "../../api/conversations";
 import toast from "react-hot-toast";
 
 export default function ManageProposals() {
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [selectedJobId, setSelectedJobId] = useState(null);
   const [proposals, setProposals] = useState([]);
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [loadingProposals, setLoadingProposals] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
+  const [messageLoading, setMessageLoading] = useState(null);
 
   useEffect(() => {
     getMyJobs()
@@ -61,6 +64,18 @@ export default function ManageProposals() {
       toast.error("Failed to reject proposal");
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleMessageExpert = async (expertId, proposalId) => {
+    setMessageLoading(proposalId);
+    try {
+      const result = await findOrCreateDirect(expertId);
+      navigate(`/messages?conversationId=${result.conversationId}`);
+    } catch {
+      toast.error("Không thể mở cuộc trò chuyện");
+    } finally {
+      setMessageLoading(null);
     }
   };
 
@@ -214,9 +229,14 @@ export default function ManageProposals() {
               </div>
 
               <div className="flex items-center justify-between pt-2">
-                <Link to="/messages" className="flex items-center gap-1.5 text-sm text-black font-medium hover:underline">
-                  Message <ArrowRight size={14} />
-                </Link>
+                <button
+                  onClick={() => handleMessageExpert(proposal.expertId, proposal.id)}
+                  disabled={messageLoading === proposal.id}
+                  className="flex items-center gap-1.5 text-sm text-black font-medium hover:underline disabled:opacity-50"
+                >
+                  {messageLoading === proposal.id ? "Đang mở..." : "Message"}
+                  <ArrowRight size={14} />
+                </button>
                 {proposal.status === "PENDING" && (
                   <div className="flex items-center gap-2">
                     <Button

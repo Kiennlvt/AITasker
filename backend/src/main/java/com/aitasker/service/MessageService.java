@@ -6,5 +6,6 @@ import java.util.List;
 
 public interface MessageService {
     List<MessageResponse> getMessages(String userId, String projectId);
+    List<MessageResponse> getConversationMessages(String userId, String conversationId);
     MessageResponse sendMessage(String senderId, SendMessageRequest request);
 }

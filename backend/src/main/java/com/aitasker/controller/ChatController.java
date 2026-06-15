@@ -21,6 +21,10 @@ public class ChatController {
     @MessageMapping("/chat.send")
     public void handleMessage(@Payload SendMessageRequest request, Principal principal) {
         MessageResponse msg = messageService.sendMessage(principal.getName(), request);
-        messagingTemplate.convertAndSend("/topic/project." + request.getProjectId(), msg);
+        if (request.getProjectId() != null) {
+            messagingTemplate.convertAndSend("/topic/project." + request.getProjectId(), msg);
+        } else {
+            messagingTemplate.convertAndSend("/topic/conversation." + request.getConversationId(), msg);
+        }
     }
 }

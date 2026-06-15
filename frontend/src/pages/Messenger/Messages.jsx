@@ -1,56 +1,273 @@
-// src/pages/client/MessagesClient.jsx
-import { 
-  SquarePen, 
-  SlidersHorizontal, 
-  Phone, 
-  Video, 
-  Info, 
-  Paperclip, 
-  Smile, 
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
+import SockJS from "sockjs-client";
+import { Client } from "@stomp/stompjs";
+import toast from "react-hot-toast";
+import {
+  SquarePen,
+  SlidersHorizontal,
+  Phone,
+  Video,
+  Info,
   SendHorizontal,
-  FileText,
-  Download
+  MessageSquare,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
+import api from "../../api/client";
+import useAuthStore from "../../store/authStore";
 
+function formatTime(ts) {
+  if (!ts) return "";
+  const date = new Date(ts);
+  const now = new Date();
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  if (date.toDateString() === now.toDateString()) return `${hh}:${mm}`;
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mo = String(date.getMonth() + 1).padStart(2, "0");
+  return `${dd}/${mo} ${hh}:${mm}`;
+}
+
+function getInitials(name) {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function Avatar({ url, name, size = "w-12 h-12", textSize = "text-sm" }) {
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt={name}
+        className={`${size} rounded-full object-cover shrink-0`}
+      />
+    );
+  }
+  return (
+    <div
+      className={`${size} rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold ${textSize} shrink-0`}
+    >
+      {getInitials(name)}
+    </div>
+  );
+}
+
+function ConversationSkeleton() {
+  return (
+    <>
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="p-4 flex gap-3 border-l-4 border-transparent">
+          <div className="w-12 h-12 rounded-full bg-gray-200 animate-pulse shrink-0" />
+          <div className="flex-1 space-y-2 pt-1">
+            <div className="h-3 bg-gray-200 rounded animate-pulse w-3/4" />
+            <div className="h-3 bg-gray-200 rounded animate-pulse w-full" />
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+function MessageSkeleton() {
+  return (
+    <>
+      {[...Array(5)].map((_, i) => (
+        <div
+          key={i}
+          className={`flex items-end gap-2 ${i % 2 !== 0 ? "flex-row-reverse" : ""}`}
+        >
+          {i % 2 === 0 && (
+            <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse shrink-0" />
+          )}
+          <div
+            className={`h-10 rounded-2xl bg-gray-200 animate-pulse ${
+              i % 2 === 0 ? "w-48" : "w-64"
+            }`}
+          />
+        </div>
+      ))}
+    </>
+  );
+}
 
 export default function Messages() {
-  // Dữ liệu mẫu danh sách hội thoại
-  const conversations = [
-    { 
-      id: 1, 
-      name: "Alex Rivera", 
-      role: "Project Lead", 
-      lastMsg: "The RAG pipeline architecture looks solid...", 
-      time: "10:24 AM", 
-      avatar: "https://i.pravatar.cc/150?img=11", 
-      active: true 
-    },
-    { 
-      id: 2, 
-      name: "Sarah Chen", 
-      role: "Architecture", 
-      lastMsg: "I've attached the data cleaning scripts for review.", 
-      time: "Yesterday", 
-      avatar: "https://i.pravatar.cc/150?img=32", 
-      active: false 
-    },
-    { 
-      id: 3, 
-      name: "Jordan Davis", 
-      role: "Tuesday", 
-      lastMsg: "The fine-tuning process is about 60% complete.", 
-      time: "Tuesday", 
-      avatar: "https://i.pravatar.cc/150?img=12", 
-      active: false 
-    },
-  ];
+  const { user } = useAuthStore();
+  const [searchParams] = useSearchParams();
+
+  const [conversations, setConversations] = useState([]);
+  // activeConv is the full InboxItemDto object
+  const [activeConv, setActiveConv] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [loadingConvs, setLoadingConvs] = useState(true);
+  const [loadingMsgs, setLoadingMsgs] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [wsConnected, setWsConnected] = useState(false);
+
+  const stompRef = useRef(null);
+  const subscriptionRef = useRef(null);
+  const activeConvRef = useRef(null);
+  const messagesEndRef = useRef(null);
+  const messageHandlerRef = useRef(null);
+
+  // Keep ref in sync for WebSocket closure
+  activeConvRef.current = activeConv;
+
+  messageHandlerRef.current = (msg) => {
+    const conv = activeConvRef.current;
+    if (!conv) return;
+    const msgConvId = msg.projectId ?? msg.conversationId;
+    if (msgConvId === conv.conversationId) {
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === msg.id)) return prev;
+        return [...prev, msg];
+      });
+    }
+    // Update last message preview in sidebar
+    setConversations((prev) => {
+      const idx = prev.findIndex((c) => c.conversationId === msgConvId);
+      if (idx === -1) return prev;
+      const updated = {
+        ...prev[idx],
+        lastMessage: msg.content,
+        lastMessageTime: msg.createdAt,
+        lastSenderId: msg.senderId,
+      };
+      return [updated, ...prev.filter((_, i) => i !== idx)];
+    });
+  };
+
+  const getWsTopic = (conv) => {
+    if (!conv) return null;
+    return conv.type === "PROJECT"
+      ? `/topic/project.${conv.conversationId}`
+      : `/topic/conversation.${conv.conversationId}`;
+  };
+
+  const subscribeToConv = (client, conv) => {
+    if (subscriptionRef.current) {
+      try { subscriptionRef.current.unsubscribe(); } catch (_) {}
+      subscriptionRef.current = null;
+    }
+    const topic = getWsTopic(conv);
+    if (!topic) return;
+    subscriptionRef.current = client.subscribe(topic, (frame) => {
+      try {
+        const msg = JSON.parse(frame.body);
+        messageHandlerRef.current(msg);
+      } catch (_) {}
+    });
+  };
+
+  // WebSocket: connect once, reconnect automatically
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    const client = new Client({
+      webSocketFactory: () => new SockJS("http://localhost:8080/ws"),
+      connectHeaders: { Authorization: `Bearer ${token}` },
+      reconnectDelay: 5000,
+      onConnect: () => {
+        setWsConnected(true);
+        if (activeConvRef.current) {
+          subscribeToConv(client, activeConvRef.current);
+        }
+      },
+      onDisconnect: () => setWsConnected(false),
+      onStompError: () => setWsConnected(false),
+    });
+    client.activate();
+    stompRef.current = client;
+    return () => { client.deactivate(); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-subscribe when active conversation changes
+  useEffect(() => {
+    const client = stompRef.current;
+    if (client?.connected) {
+      subscribeToConv(client, activeConv);
+    }
+  }, [activeConv]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load conversation list
+  useEffect(() => {
+    setLoadingConvs(true);
+    api
+      .get("/messages/inbox")
+      .then((res) => {
+        const data = res.data?.data ?? [];
+        setConversations(data);
+
+        // Support URL param ?conversationId=X to pre-select a specific conversation
+        const paramId = searchParams.get("conversationId");
+        if (paramId) {
+          const match = data.find((c) => c.conversationId === paramId);
+          if (match) { setActiveConv(match); return; }
+        }
+        if (data.length > 0) setActiveConv(data[0]);
+      })
+      .catch(() => toast.error("Không thể tải danh sách hội thoại"))
+      .finally(() => setLoadingConvs(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch messages when switching conversation
+  useEffect(() => {
+    if (!activeConv) return;
+    setLoadingMsgs(true);
+    setMessages([]);
+    const endpoint =
+      activeConv.type === "PROJECT"
+        ? `/messages/project/${activeConv.conversationId}`
+        : `/messages/conversation/${activeConv.conversationId}`;
+    api
+      .get(endpoint)
+      .then((res) => setMessages(res.data?.data ?? []))
+      .catch(() => toast.error("Không thể tải tin nhắn"))
+      .finally(() => setLoadingMsgs(false));
+  }, [activeConv?.conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-scroll
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const sendMessage = async () => {
+    const content = input.trim();
+    if (!content || !activeConv || sending) return;
+    setInput("");
+    setSending(true);
+    try {
+      const body =
+        activeConv.type === "PROJECT"
+          ? { projectId: activeConv.conversationId, content }
+          : { conversationId: activeConv.conversationId, content };
+      await api.post("/messages", body);
+    } catch {
+      toast.error("Không thể gửi tin nhắn");
+      setInput(content);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
 
   return (
     <div className="flex h-[calc(100vh-140px)] bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden animate-fadeIn">
-      
-      {/* CỘT TRÁI: DANH SÁCH TIN NHẮN (Sidebar) */}
-      <div className="w-80 md:w-96 border-r border-gray-100 flex flex-col">
-        {/* Header danh sách */}
+
+      {/* SIDEBAR */}
+      <div className="w-80 md:w-96 border-r border-gray-100 flex flex-col shrink-0">
         <div className="p-6 flex justify-between items-center border-b border-gray-50">
           <h2 className="text-2xl font-bold text-[#1a1a3c]">Messages</h2>
           <div className="flex gap-2">
@@ -63,126 +280,180 @@ export default function Messages() {
           </div>
         </div>
 
-        {/* Danh sách chat */}
         <div className="flex-1 overflow-y-auto">
-          {conversations.map((chat) => (
-            <div 
-              key={chat.id} 
-              className={`p-4 flex gap-3 cursor-pointer transition-all border-l-4 ${
-                chat.active 
-                ? "bg-orange-50/50 border-orange-500" 
-                : "border-transparent hover:bg-gray-50"
-              }`}
-            >
-              <div className="relative">
-                <img src={chat.avatar} alt={chat.name} className="w-12 h-12 rounded-full object-cover" />
-                <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
-              </div>
-              <div className="flex-1 overflow-hidden">
-                <div className="flex justify-between items-start mb-0.5">
-                  <h4 className="font-bold text-[#1a1a3c] text-sm">{chat.name}</h4>
-                  <span className="text-[10px] text-gray-400 font-medium">{chat.time}</span>
-                </div>
-                <p className="text-xs text-gray-400 truncate leading-relaxed">
-                  {chat.lastMsg}
-                </p>
-              </div>
+          {loadingConvs ? (
+            <ConversationSkeleton />
+          ) : conversations.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-gray-400 p-8 gap-3">
+              <MessageSquare size={40} className="opacity-30" />
+              <p className="text-sm text-center">Chưa có hội thoại nào</p>
             </div>
-          ))}
+          ) : (
+            conversations.map((conv) => {
+              const isActive = conv.conversationId === activeConv?.conversationId;
+              const isMyLastMsg = String(conv.lastSenderId) === String(user?.id);
+              return (
+                <div
+                  key={conv.conversationId}
+                  onClick={() => setActiveConv(conv)}
+                  className={`p-4 flex gap-3 cursor-pointer transition-all border-l-4 ${
+                    isActive
+                      ? "bg-orange-50/50 border-orange-500"
+                      : "border-transparent hover:bg-gray-50"
+                  }`}
+                >
+                  <Avatar
+                    url={conv.otherPartyAvatarUrl}
+                    name={conv.otherPartyName}
+                    size="w-12 h-12"
+                    textSize="text-sm"
+                  />
+                  <div className="flex-1 overflow-hidden">
+                    <div className="flex justify-between items-start mb-0.5">
+                      <h4 className="font-bold text-[#1a1a3c] text-sm truncate">
+                        {conv.otherPartyName}
+                      </h4>
+                      <span className="text-[10px] text-gray-400 font-medium shrink-0 ml-2">
+                        {formatTime(conv.lastMessageTime)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400 truncate leading-relaxed">
+                      {isMyLastMsg && <span className="font-medium">Bạn: </span>}
+                      {conv.lastMessage}
+                    </p>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
-      {/* CỘT PHẢI: KHUNG CHAT CHI TIẾT */}
-      <div className="flex-1 flex flex-col bg-[#fcfcfd]">
-        
-        {/* Header khung chat */}
-        <div className="p-4 px-6 border-b border-gray-100 bg-white flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <img src="https://i.pravatar.cc/150?img=11" className="w-10 h-10 rounded-full object-cover" />
-            <div>
-              <h3 className="font-bold text-[#1a1a3c] text-sm">Alex Rivera</h3>
-              <p className="text-[11px] text-gray-400 font-medium">Project Lead</p>
+      {/* MAIN CHAT */}
+      <div className="flex-1 flex flex-col bg-[#fcfcfd] min-w-0">
+        {!activeConv ? (
+          <div className="flex-1 flex items-center justify-center text-gray-400">
+            <div className="text-center space-y-3">
+              <MessageSquare size={48} className="mx-auto opacity-20" />
+              <p className="text-sm">Chọn một hội thoại để bắt đầu</p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-gray-400">
-            <button className="p-2 hover:bg-gray-50 rounded-xl transition-all"><Phone size={18} /></button>
-            <button className="p-2 hover:bg-gray-50 rounded-xl transition-all"><Video size={18} /></button>
-            <button className="p-2 hover:bg-gray-50 rounded-xl transition-all"><Info size={18} /></button>
-          </div>
-        </div>
-
-        {/* Nội dung tin nhắn (Scroll Area) */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-gray-50/30">
-          
-          {/* Tin nhắn nhận được (Alex) */}
-          <div className="flex items-start gap-3 max-w-[80%]">
-            <img src="https://i.pravatar.cc/150?img=11" className="w-8 h-8 rounded-full mt-1" />
-            <div className="space-y-2">
-              <div className="bg-white p-4 rounded-2xl rounded-tl-none border border-gray-100 shadow-sm text-sm text-gray-600 leading-relaxed">
-                The RAG pipeline architecture looks solid. I've reviewed the vector database choice and the logic flow. Next we need to proceed with the integration interface.
-              </div>
-              <span className="text-[10px] text-gray-400 font-medium ml-1">Today, 10:24 AM</span>
-            </div>
-          </div>
-
-          {/* Tin nhắn của bạn (Gửi đi) */}
-          <div className="flex flex-row-reverse items-start gap-3 ml-auto max-w-[80%]">
-            <div className="space-y-2 flex flex-col items-end">
-              <div className="bg-indigo-600 text-white p-4 rounded-2xl rounded-tr-none shadow-md text-sm leading-relaxed">
-                Absolutely, I've already implemented the REST endpoints. I'm ready to push the first set of tests for the LLM output to the staging cluster.
-              </div>
-              <span className="text-[10px] text-gray-400 font-medium mr-1">10:25 AM</span>
-            </div>
-          </div>
-
-          {/* Tin nhắn kèm File (Alex gửi) */}
-          <div className="flex items-start gap-3 max-w-[80%]">
-            <img src="https://i.pravatar.cc/150?img=11" className="w-8 h-8 rounded-full mt-1" />
-            <div className="space-y-3">
-              <div className="bg-white p-4 rounded-2xl rounded-tl-none border border-gray-100 shadow-sm">
-                <p className="text-sm text-gray-600 mb-3 leading-relaxed">
-                  Here is the updated architecture diagram reflecting the new node configuration.
-                </p>
-                {/* File Block */}
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 group cursor-pointer hover:border-indigo-200 transition-all">
-                  <div className="p-2 bg-white rounded-lg text-indigo-500 shadow-sm">
-                    <FileText size={20} />
-                  </div>
-                  <div className="flex-1 overflow-hidden">
-                    <h5 className="text-xs font-bold text-[#1a1a3c] truncate">technical_spec_v2.pdf</h5>
-                    <p className="text-[10px] text-gray-400">2.4 MB • Today, 10:14 AM</p>
-                  </div>
-                  <Download size={16} className="text-gray-400 group-hover:text-indigo-500" />
+        ) : (
+          <>
+            {/* Chat header — shows the OTHER person */}
+            <div className="p-4 px-6 border-b border-gray-100 bg-white flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-3">
+                <Avatar
+                  url={activeConv.otherPartyAvatarUrl}
+                  name={activeConv.otherPartyName}
+                  size="w-10 h-10"
+                  textSize="text-sm"
+                />
+                <div>
+                  <h3 className="font-bold text-[#1a1a3c] text-sm">
+                    {activeConv.otherPartyName}
+                  </h3>
+                  {wsConnected ? (
+                    <p className="text-[11px] text-emerald-500 font-medium flex items-center gap-1">
+                      <Wifi size={11} /> Đã kết nối
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-amber-500 font-medium flex items-center gap-1">
+                      <WifiOff size={11} /> Đang kết nối lại...
+                    </p>
+                  )}
                 </div>
               </div>
-              <span className="text-[10px] text-gray-400 font-medium">10:26 AM</span>
+              <div className="flex items-center gap-1.5 text-gray-400">
+                <button className="p-2 hover:bg-gray-50 rounded-xl transition-all">
+                  <Phone size={18} />
+                </button>
+                <button className="p-2 hover:bg-gray-50 rounded-xl transition-all">
+                  <Video size={18} />
+                </button>
+                <button className="p-2 hover:bg-gray-50 rounded-xl transition-all">
+                  <Info size={18} />
+                </button>
+              </div>
             </div>
-          </div>
 
-        </div>
-
-        {/* Khung nhập tin nhắn (Footer) */}
-        <div className="p-4 px-6 bg-white border-t border-gray-100">
-          <div className="flex items-center gap-3 bg-gray-50 p-2 pl-4 rounded-2xl border border-gray-100 focus-within:border-indigo-200 focus-within:bg-white transition-all">
-            <button className="text-gray-400 hover:text-indigo-500 transition-colors">
-              <Smile size={20} />
-            </button>
-            <input 
-              type="text" 
-              placeholder="Type your message..." 
-              className="flex-1 bg-transparent border-none outline-none text-sm text-[#1a1a3c]"
-            />
-            <div className="flex items-center gap-1">
-              <button className="p-2 text-gray-400 hover:text-indigo-500 transition-colors">
-                <Paperclip size={20} />
-              </button>
-              <button className="p-2 bg-indigo-600 text-white rounded-xl shadow-md hover:bg-indigo-700 transition-all">
-                <SendHorizontal size={18} />
-              </button>
+            {/* Message list */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/30">
+              {loadingMsgs ? (
+                <MessageSkeleton />
+              ) : messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2">
+                  <MessageSquare size={36} className="opacity-20" />
+                  <p className="text-sm">Chưa có tin nhắn. Hãy bắt đầu cuộc trò chuyện!</p>
+                </div>
+              ) : (
+                messages.map((msg) => {
+                  const isMine = String(msg.senderId) === String(user?.id);
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`flex items-end gap-2 ${isMine ? "flex-row-reverse" : ""}`}
+                    >
+                      {!isMine && (
+                        <Avatar
+                          url={msg.senderAvatarUrl}
+                          name={msg.senderName}
+                          size="w-8 h-8"
+                          textSize="text-xs"
+                        />
+                      )}
+                      <div
+                        className={`flex flex-col max-w-[75%] ${
+                          isMine ? "items-end" : "items-start"
+                        }`}
+                      >
+                        {!isMine && (
+                          <span className="text-[11px] text-gray-500 font-medium mb-1 ml-1">
+                            {msg.senderName}
+                          </span>
+                        )}
+                        <div
+                          className={`px-4 py-3 rounded-2xl text-sm leading-relaxed break-words ${
+                            isMine
+                              ? "bg-indigo-600 text-white rounded-br-none shadow-md"
+                              : "bg-white text-gray-700 rounded-bl-none border border-gray-100 shadow-sm"
+                          }`}
+                        >
+                          {msg.content}
+                        </div>
+                        <span className="text-[10px] text-gray-400 font-medium mt-1 mx-1">
+                          {formatTime(msg.createdAt)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+              <div ref={messagesEndRef} />
             </div>
-          </div>
-        </div>
 
+            {/* Input area */}
+            <div className="p-4 px-6 bg-white border-t border-gray-100 shrink-0">
+              <div className="flex items-end gap-3 bg-gray-50 p-2 pl-4 rounded-2xl border border-gray-100 focus-within:border-indigo-200 focus-within:bg-white transition-all">
+                <textarea
+                  rows={1}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Nhập tin nhắn... (Enter để gửi, Shift+Enter xuống dòng)"
+                  className="flex-1 bg-transparent border-none outline-none text-sm text-[#1a1a3c] resize-none max-h-32 py-1.5"
+                />
+                <button
+                  onClick={sendMessage}
+                  disabled={!input.trim() || sending}
+                  className="p-2 bg-indigo-600 text-white rounded-xl shadow-md hover:bg-indigo-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 mb-0.5"
+                >
+                  <SendHorizontal size={18} />
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

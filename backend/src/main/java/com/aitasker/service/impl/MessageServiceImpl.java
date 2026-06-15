@@ -18,6 +18,8 @@ public class MessageServiceImpl implements MessageService {
     private final MessageRepository messageRepo;
     private final ProjectRepository projectRepo;
     private final UserRepository userRepo;
+    private final ConversationRepository conversationRepo;
+    private final ConversationParticipantRepository participantRepo;
 
     @Override
     public List<MessageResponse> getMessages(String userId, String projectId) {
@@ -30,28 +32,52 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
-    public MessageResponse sendMessage(String senderId, SendMessageRequest request) {
-        Project project = projectRepo.findById(request.getProjectId())
-                .orElseThrow(() -> AppException.notFound("Project not found"));
-        if (!project.getClient().getId().equals(senderId) && !project.getExpert().getId().equals(senderId))
-            throw AppException.forbidden("You are not part of this project");
+    public List<MessageResponse> getConversationMessages(String userId, String conversationId) {
+        if (!participantRepo.existsByConversationIdAndUserId(conversationId, userId))
+            throw AppException.forbidden("Access denied");
+        return messageRepo.findByConversationIdOrderByCreatedAtAsc(conversationId)
+                .stream().map(this::toResponse).toList();
+    }
 
+    @Override
+    public MessageResponse sendMessage(String senderId, SendMessageRequest request) {
         User sender = userRepo.findById(senderId)
                 .orElseThrow(() -> AppException.notFound("User not found"));
 
-        Message message = Message.builder()
-                .project(project)
-                .sender(sender)
-                .content(request.getContent())
-                .build();
+        if (request.getProjectId() != null) {
+            Project project = projectRepo.findById(request.getProjectId())
+                    .orElseThrow(() -> AppException.notFound("Project not found"));
+            if (!project.getClient().getId().equals(senderId) && !project.getExpert().getId().equals(senderId))
+                throw AppException.forbidden("You are not part of this project");
+            Message message = Message.builder()
+                    .project(project)
+                    .sender(sender)
+                    .content(request.getContent())
+                    .build();
+            return toResponse(messageRepo.save(message));
+        }
 
-        return toResponse(messageRepo.save(message));
+        if (request.getConversationId() != null) {
+            Conversation conversation = conversationRepo.findById(request.getConversationId())
+                    .orElseThrow(() -> AppException.notFound("Conversation not found"));
+            if (!participantRepo.existsByConversationIdAndUserId(conversation.getId(), senderId))
+                throw AppException.forbidden("You are not a participant of this conversation");
+            Message message = Message.builder()
+                    .conversation(conversation)
+                    .sender(sender)
+                    .content(request.getContent())
+                    .build();
+            return toResponse(messageRepo.save(message));
+        }
+
+        throw AppException.badRequest("Either projectId or conversationId is required");
     }
 
     private MessageResponse toResponse(Message m) {
         return MessageResponse.builder()
                 .id(m.getId())
-                .projectId(m.getProject().getId())
+                .projectId(m.getProject() != null ? m.getProject().getId() : null)
+                .conversationId(m.getConversation() != null ? m.getConversation().getId() : null)
                 .senderId(m.getSender().getId())
                 .senderName(m.getSender().getFullName())
                 .senderAvatarUrl(m.getSender().getAvatarUrl())

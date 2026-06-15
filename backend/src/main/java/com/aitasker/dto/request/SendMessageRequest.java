@@ -5,6 +5,7 @@ import lombok.Data;
 
 @Data
 public class SendMessageRequest {
-    @NotBlank private String projectId;
+    private String projectId;
+    private String conversationId;
     @NotBlank private String content;
 }
