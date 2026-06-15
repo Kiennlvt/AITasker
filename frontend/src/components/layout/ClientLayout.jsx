@@ -6,6 +6,7 @@ import {
   BriefcaseBusiness,
   BadgeRussianRubleIcon,
   UserCircle,
+  Bookmark,
 } from "lucide-react";
 import { Outlet } from "react-router-dom";
 import Header from "../ui/Header";
@@ -43,6 +44,11 @@ const menuItems = [
       name: "Messages",
       icon: <MessageSquare size={20} />,
       path: "/messages",
+    },
+    {
+      name: "Saved Services",
+      icon: <Bookmark size={20} />,
+      path: "/saved-services",
     },
     {
       name: "Profile",

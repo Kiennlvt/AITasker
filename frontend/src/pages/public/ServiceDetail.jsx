@@ -1,16 +1,23 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
 import { getServiceById } from "../../api/services";
-import { FiCode, FiCpu, FiActivity, FiHome, FiClock, FiUsers } from "react-icons/fi";
+import { FiCode, FiCpu, FiActivity, FiHome, FiClock, FiUsers, FiBookmark } from "react-icons/fi";
+import toast from "react-hot-toast";
+import { checkSaved, saveService, unsaveService } from "../../api/savedService";
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=800";
 
 export default function ServiceDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [service, setService] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [saved, setSaved] = useState(false);
+  const [savingLoading, setSavingLoading] = useState(false);
+
+  const isLoggedIn = !!localStorage.getItem("accessToken");
 
   useEffect(() => {
     getServiceById(id)
@@ -18,6 +25,35 @@ export default function ServiceDetail() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    if (!isLoggedIn || !id) return;
+    checkSaved(id).then(setSaved).catch(() => {});
+  }, [id, isLoggedIn]);
+
+  const handleSaveToggle = async () => {
+    if (!isLoggedIn) {
+      toast("Vui lòng đăng nhập để lưu dịch vụ", { icon: "🔒" });
+      navigate("/login");
+      return;
+    }
+    setSavingLoading(true);
+    try {
+      if (saved) {
+        await unsaveService(id);
+        setSaved(false);
+        toast.success("Đã xóa khỏi danh sách đã lưu");
+      } else {
+        await saveService(id);
+        setSaved(true);
+        toast.success("Đã lưu vào danh sách của bạn");
+      }
+    } catch {
+      toast.error("Có lỗi xảy ra, vui lòng thử lại");
+    } finally {
+      setSavingLoading(false);
+    }
+  };
 
   if (loading) return <div className="p-10 text-gray-400">Loading...</div>;
   if (!service) return <div className="p-10 text-3xl font-black">Service not found</div>;
@@ -93,7 +129,15 @@ export default function ServiceDetail() {
             <InfoRow label="Category" value={service.category ?? "—"} orange />
 
             <Button className="mt-6 w-full rounded-full py-4 text-base">Order Now</Button>
-            <Button className="mt-6 w-full rounded-full py-4 text-base" variant="secondary">Save for later</Button>
+            <Button
+              className="mt-6 w-full rounded-full py-4 text-base flex items-center justify-center gap-2"
+              variant="secondary"
+              onClick={handleSaveToggle}
+              disabled={savingLoading}
+            >
+              <FiBookmark className={saved ? "fill-current" : ""} />
+              {saved ? "Đã lưu" : "Save for later"}
+            </Button>
 
 
             <div className="mt-6 space-y-3 border-t border-slate-100 pt-5 text-xs text-slate-500">

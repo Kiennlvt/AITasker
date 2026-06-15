@@ -37,6 +37,7 @@ import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import ManageUsersPage from "./pages/admin/ManageUsersPage";
 import ManageJobsPage from "./pages/admin/ManageJobsPage";
 import StatisticsPage from "./pages/admin/StatisticsPage";
+import SavedServices from "./pages/client/SavedService";
 
 export default function App() {
   return (
@@ -70,6 +71,7 @@ export default function App() {
             <Route path="/manage-proposals" element={<ManageProposals />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/client-profile" element={<ProfileClient />} />
+            <Route path="/saved-services" element={<SavedServices />} />
           </Route>
         </Route>
 
