@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 public class MessageResponse {
     private String id;
     private String projectId;
+    private String conversationId;
     private String senderId;
     private String senderName;
     private String senderAvatarUrl;

@@ -28,16 +28,21 @@ import JobDetail from "./pages/public/JobDetail";
 import Authentication from "./components/layout/Authentication";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 import OAuth2CallbackPage from "./pages/auth/OAuth2CallbackPage";
+import useAuthStore from "./store/authStore";
 
-// ==========================================
-// ĐOẠN THEM MỚI 1: IMPORT CÁC TRANG ADMIN CỦA ÔNG
-// ==========================================
 import AdminLayout from "./components/layout/AdminLayout";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import ManageUsersPage from "./pages/admin/ManageUsersPage";
 import ManageJobsPage from "./pages/admin/ManageJobsPage";
 import StatisticsPage from "./pages/admin/StatisticsPage";
 import SavedServices from "./pages/client/SavedService";
+
+// Renders ClientLayout or ExpertLayout depending on logged-in user's role
+function MessengerLayout() {
+  const { user } = useAuthStore();
+  if (user?.role === "EXPERT") return <ExpertLayout />;
+  return <ClientLayout />;
+}
 
 export default function App() {
   return (
@@ -57,6 +62,13 @@ export default function App() {
           <Route path="/services/:id" element={<ServiceDetail />} />
         </Route>
 
+        {/* Shared /messages route — accessible by both CLIENT and EXPERT */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<MessengerLayout />}>
+            <Route path="/messages" element={<Messages />} />
+          </Route>
+        </Route>
+
         <Route element={<ProtectedRoute role="CLIENT" />}>
           <Route element={<PostJobLayout />}>
             <Route path="/post-job/step-1" element={<PostJob />} />
@@ -69,7 +81,6 @@ export default function App() {
             <Route path="/projects" element={<ProjectClient />} />
             <Route path="/projects/:id" element={<ProjectDetailClient />} />
             <Route path="/manage-proposals" element={<ManageProposals />} />
-            <Route path="/messages" element={<Messages />} />
             <Route path="/client-profile" element={<ProfileClient />} />
             <Route path="/saved-services" element={<SavedServices />} />
           </Route>
@@ -83,10 +94,6 @@ export default function App() {
           </Route>
         </Route>
 
-        {/* ==========================================
-            ĐOẠN THEM MỚI 2: CỤM ROUTE ADMIN PANEL
-            (Tạm thời để thô chưa bọc ProtectedRoute role="ADMIN" để ông dễ test giao diện trước)
-           ========================================== */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboardPage />} />
           <Route path="dashboard" element={<AdminDashboardPage />} />

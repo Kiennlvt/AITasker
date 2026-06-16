@@ -9,7 +9,8 @@ import java.util.List;
 @Repository
 public interface MessageRepository extends JpaRepository<Message, String> {
     List<Message> findByProjectIdOrderByCreatedAtAsc(String projectId);
-
-    // Latest message per project (for inbox preview)
     List<Message> findTop1ByProjectIdOrderByCreatedAtDesc(String projectId);
+
+    List<Message> findByConversationIdOrderByCreatedAtAsc(String conversationId);
+    List<Message> findTop1ByConversationIdOrderByCreatedAtDesc(String conversationId);
 }
