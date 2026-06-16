@@ -26,8 +26,8 @@ spring:
             user-name-attribute: id
   datasource:
     url: jdbc:postgresql://localhost:5432/aitasker_db
-    username: aitasker
-    password: secret
+    username: postgres
+    password: 123456
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -48,12 +48,12 @@ app:
   upload:
     dir: uploads
   jwt:
-    secret: aItAsKeR_jWt_SeCrEt_KeY_2024_CHANGE_THIS_IN_PRODUCTION
-    expiration-ms: 86400000        # 24h
-    refresh-expiration-ms: 604800000  # 7d
+    secret: "aItAsKeR_jWt_SeCrEt_KeY_2024_CHANGE_THIS_IN_PRODUCTION"
+    expiration-ms: 86400000
+    refresh-expiration-ms: 604800000
   cors:
     allowed-origins: http://localhost:3000,http://localhost:3001,http://localhost:5173,http://localhost:5174
   ai:
-    anthropic-api-key: ${ANTHROPIC_API_KEY:}
+    anthropic-api-key: "dummy-key"
   frontend:
     url: ${FRONTEND_URL:http://localhost:3000}
