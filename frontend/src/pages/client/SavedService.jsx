@@ -14,7 +14,7 @@ export default function SavedServices() {
   useEffect(() => {
     getSavedServices()
       .then(setServices)
-      .catch(() => toast.error("Không thể tải danh sách đã lưu"))
+      .catch(() => toast.error("Unable to load saved list"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -23,9 +23,9 @@ export default function SavedServices() {
     try {
       await unsaveService(serviceId);
       setServices((prev) => prev.filter((s) => s.id !== serviceId));
-      toast.success("Đã xóa khỏi danh sách đã lưu");
+      toast.success("Removed from saved list");
     } catch {
-      toast.error("Có lỗi xảy ra, vui lòng thử lại");
+      toast.error("An error occurred, please try again.");
     } finally {
       setRemoving(null);
     }
@@ -43,14 +43,14 @@ export default function SavedServices() {
     <div className="space-y-6 max-w-[1400px] mx-auto pb-12 animate-fadeIn text-[#1a1a3c]">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black tracking-tight">Dịch vụ đã lưu</h1>
-          <p className="text-sm text-gray-400 mt-1">{services.length} dịch vụ</p>
+          <h1 className="text-2xl font-black tracking-tight">Saved service</h1>
+          <p className="text-sm text-gray-400 mt-1">{services.length} Service</p>
         </div>
         <Link
           to="/services"
           className="text-sm font-bold text-orange-500 hover:text-orange-600 transition-colors"
         >
-          Khám phá thêm →
+          Explore more →
         </Link>
       </div>
 
@@ -59,16 +59,15 @@ export default function SavedServices() {
           <div className="w-16 h-16 bg-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <BookmarkX size={28} className="text-orange-400" />
           </div>
-          <h3 className="font-bold text-lg text-[#1a1a3c] mb-2">Chưa có dịch vụ nào được lưu</h3>
+          <h3 className="font-bold text-lg text-[#1a1a3c] mb-2">No services have been saved yet.</h3>
           <p className="text-sm text-gray-400 mb-6">
-            Nhấn "Save for later" trên trang chi tiết dịch vụ để lưu lại những dịch vụ bạn quan tâm.
-          </p>
-          <Link
-            to="/services"
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm rounded-xl shadow-md transition-all"
-          >
-            Khám phá dịch vụ
-          </Link>
+            Nhấn "Save for later" Visit the service details page to save the services you are interested in./</p>
+            <Link
+              to="/services"
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm rounded-xl shadow-md transition-all"
+            >
+              Explore services
+            </Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -134,7 +133,7 @@ function SavedServiceCard({ service, removing, onRemove }) {
 
         <div className="mt-4 flex items-center justify-between">
           <div>
-            <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Giá từ</p>
+            <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Price from</p>
             <p className="text-lg font-black text-orange-500">
               ${Number(service.price ?? 0).toLocaleString()}
             </p>
@@ -144,7 +143,7 @@ function SavedServiceCard({ service, removing, onRemove }) {
             className="flex items-center gap-1.5 px-4 py-2 bg-[#1a1a3c] hover:bg-orange-500 text-white font-bold text-xs rounded-xl transition-all"
           >
             <ExternalLink size={12} />
-            Xem chi tiết
+            See details
           </Link>
         </div>
       </div>

@@ -60,13 +60,13 @@ export default function PostJob() {
           </div>
 
           <div className="mb-8">
-            <label className="block mb-3 font-semibold text-[#15153d]">Thời hạn mong muốn</label>
+            <label className="block mb-3 font-semibold text-[#15153d]">Desired deadline</label>
             <div className="flex gap-4">
               <input
                 type="number"
                 value={timelineAmount}
                 onChange={(e) => setTimelineAmount(e.target.value)}
-                placeholder="Nhập số..."
+                placeholder="Enter number..."
                 className="flex-1 h-[65px] px-5 rounded-2xl border border-gray-300 outline-none focus:border-orange-400"
               />
               <select
@@ -74,9 +74,9 @@ export default function PostJob() {
                 onChange={(e) => setTimelineUnit(e.target.value)}
                 className="w-[160px] h-[65px] px-5 rounded-2xl border border-gray-300 outline-none focus:border-orange-400"
               >
-                <option>Tháng</option>
-                <option>Tuần</option>
-                <option>Ngày</option>
+                <option>Months</option>
+                <option>Weeks</option>
+                <option>Days</option>
               </select>
             </div>
           </div>
@@ -97,12 +97,12 @@ export default function PostJob() {
 
           <div className="mb-12">
             <label className="block mb-3 font-semibold text-[#15153d]">
-              Tải lên hình ảnh hoặc tài liệu mẫu
+              Upload sample images or documents.
             </label>
             <div className="border-2 border-dashed border-gray-300 rounded-3xl h-[220px] flex flex-col items-center justify-center text-center">
               <div className="text-5xl mb-4">☁️</div>
-              <h3 className="font-semibold text-lg text-[#15153d]">Tải lên hình ảnh hoặc tài liệu mẫu</h3>
-              <p className="text-gray-400 mt-2">PNG, JPG, PDF (tối đa 10MB)</p>
+              <h3 className="font-semibold text-lg text-[#15153d]">Upload sample images or documents</h3>
+              <p className="text-gray-400 mt-2">PNG, JPG, PDF (maximum 10MB)</p>
             </div>
           </div>
 

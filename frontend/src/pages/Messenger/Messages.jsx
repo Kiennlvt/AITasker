@@ -123,7 +123,7 @@ export default function Messages() {
   messageHandlerRef.current = (msg) => {
     const conv = activeConvRef.current;
     if (!conv) return;
-    const msgConvId = msg.projectId ?? msg.conversationId;
+    const msgConvId = msg.conversationId;
     if (msgConvId === conv.conversationId) {
       setMessages((prev) => {
         if (prev.some((m) => m.id === msg.id)) return prev;
@@ -146,9 +146,7 @@ export default function Messages() {
 
   const getWsTopic = (conv) => {
     if (!conv) return null;
-    return conv.type === "PROJECT"
-      ? `/topic/project.${conv.conversationId}`
-      : `/topic/conversation.${conv.conversationId}`;
+    return `/topic/conversation.${conv.conversationId}`;
   };
 
   const subscribeToConv = (client, conv) => {
@@ -221,12 +219,8 @@ export default function Messages() {
     if (!activeConv) return;
     setLoadingMsgs(true);
     setMessages([]);
-    const endpoint =
-      activeConv.type === "PROJECT"
-        ? `/messages/project/${activeConv.conversationId}`
-        : `/messages/conversation/${activeConv.conversationId}`;
     api
-      .get(endpoint)
+      .get(`/messages/conversation/${activeConv.conversationId}`)
       .then((res) => setMessages(res.data?.data ?? []))
       .catch(() => toast.error("Không thể tải tin nhắn"))
       .finally(() => setLoadingMsgs(false));
@@ -243,11 +237,7 @@ export default function Messages() {
     setInput("");
     setSending(true);
     try {
-      const body =
-        activeConv.type === "PROJECT"
-          ? { projectId: activeConv.conversationId, content }
-          : { conversationId: activeConv.conversationId, content };
-      await api.post("/messages", body);
+      await api.post("/messages", { conversationId: activeConv.conversationId, content });
     } catch {
       toast.error("Không thể gửi tin nhắn");
       setInput(content);
