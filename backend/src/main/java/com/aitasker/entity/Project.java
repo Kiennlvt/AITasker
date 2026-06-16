@@ -29,6 +29,10 @@ public class Project {
     @JoinColumn(name = "expert_id", nullable = false)
     private User expert;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "conversation_id")
+    private Conversation conversation;
+
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private ProjectStatus status = ProjectStatus.PENDING;

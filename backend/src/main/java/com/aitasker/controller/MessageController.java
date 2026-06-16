@@ -25,7 +25,6 @@ public class MessageController {
 
     private final MessageService messageService;
     private final SimpMessagingTemplate messagingTemplate;
-    private final ProjectRepository projectRepo;
     private final MessageRepository messageRepo;
     private final ConversationRepository conversationRepo;
 
@@ -51,11 +50,7 @@ public class MessageController {
             @AuthenticationPrincipal UserDetails user,
             @Valid @RequestBody SendMessageRequest request) {
         MessageResponse msg = messageService.sendMessage(user.getUsername(), request);
-        if (request.getProjectId() != null) {
-            messagingTemplate.convertAndSend("/topic/project." + request.getProjectId(), msg);
-        } else {
-            messagingTemplate.convertAndSend("/topic/conversation." + request.getConversationId(), msg);
-        }
+        messagingTemplate.convertAndSend("/topic/conversation." + msg.getConversationId(), msg);
         return ApiResponse.ok(msg);
     }
 
@@ -65,27 +60,8 @@ public class MessageController {
         String uid = user.getUsername();
         List<InboxItemDto> inbox = new ArrayList<>();
 
-        // Project-based conversations
-        List<Project> clientProjects = projectRepo.findByClientIdOrderByCreatedAtDesc(uid);
-        List<Project> expertProjects = projectRepo.findByExpertIdOrderByCreatedAtDesc(uid);
-        List<Project> allProjects = new ArrayList<>(clientProjects);
-        allProjects.addAll(expertProjects);
-
-        for (Project p : allProjects) {
-            List<Message> msgs = messageRepo.findTop1ByProjectIdOrderByCreatedAtDesc(p.getId());
-            String lastMsg = msgs.isEmpty() ? "" : msgs.get(0).getContent();
-            String lastSenderId = msgs.isEmpty() ? null : msgs.get(0).getSender().getId();
-            LocalDateTime lastTime = msgs.isEmpty() ? p.getCreatedAt() : msgs.get(0).getCreatedAt();
-            boolean isClient = p.getClient().getId().equals(uid);
-            User other = isClient ? p.getExpert() : p.getClient();
-            inbox.add(new InboxItemDto(
-                p.getId(), "PROJECT",
-                other.getFullName(), other.getAvatarUrl(),
-                lastMsg, lastTime, lastSenderId
-            ));
-        }
-
-        // Direct conversations
+        // All messaging (direct chats and project chats) lives in a single
+        // conversation per pair of users, so each pair shows up only once here
         List<Conversation> conversations = conversationRepo.findByParticipantUserId(uid);
         for (Conversation c : conversations) {
             List<Message> msgs = messageRepo.findTop1ByConversationIdOrderByCreatedAtDesc(c.getId());
@@ -98,7 +74,7 @@ public class MessageController {
                     .findFirst().orElse(null);
             if (other == null) continue;
             inbox.add(new InboxItemDto(
-                c.getId(), "DIRECT",
+                c.getId(),
                 other.getFullName(), other.getAvatarUrl(),
                 lastMsg, lastTime, lastSenderId
             ));
@@ -112,7 +88,6 @@ public class MessageController {
 
     public record InboxItemDto(
         String conversationId,
-        String type,
         String otherPartyName,
         String otherPartyAvatarUrl,
         String lastMessage,

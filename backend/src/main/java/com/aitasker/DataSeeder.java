@@ -3,6 +3,7 @@ package com.aitasker;
 import com.aitasker.entity.*;
 import com.aitasker.enums.*;
 import com.aitasker.repository.*;
+import com.aitasker.service.ConversationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -27,6 +28,7 @@ public class DataSeeder implements CommandLineRunner {
     private final MilestoneRepository milestoneRepo;
     private final ReviewRepository reviewRepo;
     private final MessageRepository messageRepo;
+    private final ConversationService conversationService;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -354,8 +356,9 @@ public class DataSeeder implements CommandLineRunner {
         // ─── PROJECTS + MILESTONES ───────────────────────────────────────────
 
         // Project A: NLP Chatbot (ACTIVE, 33% done)
+        Conversation convA = conversationService.findOrCreateDirect(c1.getId(), e1.getId());
         Project projA = projectRepo.save(Project.builder()
-                .job(job1).client(c1).expert(e1).status(ProjectStatus.ACTIVE).build());
+                .job(job1).client(c1).expert(e1).status(ProjectStatus.ACTIVE).conversation(convA).build());
 
         milestoneRepo.save(Milestone.builder().project(projA)
                 .title("Requirements & Architecture")
@@ -376,8 +379,9 @@ public class DataSeeder implements CommandLineRunner {
                 .status(MilestoneStatus.PENDING).build());
 
         // Project B: MLOps Pipeline (ACTIVE, 67% done)
+        Conversation convB = conversationService.findOrCreateDirect(c2.getId(), e2.getId());
         Project projB = projectRepo.save(Project.builder()
-                .job(job3).client(c2).expert(e2).status(ProjectStatus.ACTIVE).build());
+                .job(job3).client(c2).expert(e2).status(ProjectStatus.ACTIVE).conversation(convB).build());
 
         milestoneRepo.save(Milestone.builder().project(projB)
                 .title("Infrastructure Setup & IaC")
@@ -398,8 +402,9 @@ public class DataSeeder implements CommandLineRunner {
                 .status(MilestoneStatus.PENDING).build());
 
         // Project C: PCB Defect Detection (COMPLETED)
+        Conversation convC = conversationService.findOrCreateDirect(c2.getId(), e3.getId());
         Project projC = projectRepo.save(Project.builder()
-                .job(job4).client(c2).expert(e3).status(ProjectStatus.COMPLETED).build());
+                .job(job4).client(c2).expert(e3).status(ProjectStatus.COMPLETED).conversation(convC).build());
 
         job4.setStatus(JobStatus.COMPLETED); jobRepo.save(job4);
 
@@ -422,8 +427,9 @@ public class DataSeeder implements CommandLineRunner {
                 .status(MilestoneStatus.APPROVED).build());
 
         // Project D: Fraud Detection Pipeline (ACTIVE, early stage)
+        Conversation convD = conversationService.findOrCreateDirect(c4.getId(), e4.getId());
         Project projD = projectRepo.save(Project.builder()
-                .job(job8).client(c4).expert(e4).status(ProjectStatus.ACTIVE).build());
+                .job(job8).client(c4).expert(e4).status(ProjectStatus.ACTIVE).conversation(convD).build());
 
         milestoneRepo.save(Milestone.builder().project(projD)
                 .title("Feature Engineering & Data Pipeline")
@@ -460,31 +466,31 @@ public class DataSeeder implements CommandLineRunner {
                 .comment("Le Van Khoa is knowledgeable and responsive. The first two milestones were delivered on time with clean code. Looking forward to the final deployment phase.").build());
 
         // ─── MESSAGES ────────────────────────────────────────────────────────
-        messageRepo.save(Message.builder().project(projA).sender(c1)
+        messageRepo.save(Message.builder().conversation(convA).sender(c1)
                 .content("Hi Khoa, just confirming the Architecture milestone is approved. Great work on the RAG design — exactly what we needed. Please proceed with milestone 2.").build());
 
-        messageRepo.save(Message.builder().project(projA).sender(e1)
+        messageRepo.save(Message.builder().conversation(convA).sender(e1)
                 .content("Thank you! I've already started on the LangChain pipeline. I'll have a demo-ready version for you to test by end of this week. I'll share the staging URL.").build());
 
-        messageRepo.save(Message.builder().project(projA).sender(c1)
+        messageRepo.save(Message.builder().conversation(convA).sender(c1)
                 .content("Sounds good. One question: can the chatbot handle both Vietnamese and English inputs? We have some expat customers.").build());
 
-        messageRepo.save(Message.builder().project(projA).sender(e1)
+        messageRepo.save(Message.builder().conversation(convA).sender(e1)
                 .content("Absolutely — I'm using multilingual embeddings (multilingual-e5-large) so Vietnamese and English are both supported out of the box. No extra cost.").build());
 
-        messageRepo.save(Message.builder().project(projB).sender(e2)
+        messageRepo.save(Message.builder().conversation(convB).sender(e2)
                 .content("Good news — the EKS cluster and MLflow are live. I've shared the Grafana dashboard URL and admin credentials in the shared Notion doc. Milestone 1 PR is ready for review.").build());
 
-        messageRepo.save(Message.builder().project(projB).sender(c2)
+        messageRepo.save(Message.builder().conversation(convB).sender(c2)
                 .content("Tested the MLflow UI — looks great. Approved Milestone 1. One request: can we also add model size and inference latency as tracked metrics?").build());
 
-        messageRepo.save(Message.builder().project(projB).sender(e2)
+        messageRepo.save(Message.builder().conversation(convB).sender(e2)
                 .content("Already planned for Milestone 2! I'll log model size, ONNX export size, and P99 latency as MLflow metrics. Will demo the full CI/CD run next week.").build());
 
-        messageRepo.save(Message.builder().project(projD).sender(e4)
+        messageRepo.save(Message.builder().conversation(convD).sender(e4)
                 .content("Kick-off notes sent to your email. Requesting access to the Kafka cluster and the last 6 months of transaction history (anonymised). I can sign an NDA if needed.").build());
 
-        messageRepo.save(Message.builder().project(projD).sender(c4)
+        messageRepo.save(Message.builder().conversation(convD).sender(c4)
                 .content("NDA signed and sent back. IT will provision Kafka read access by tomorrow. The transaction data will be on S3 — I'll share the bucket ARN shortly.").build());
 
         log.info("=== Database seeded successfully! ===");

@@ -6,6 +6,7 @@ import com.aitasker.entity.*;
 import com.aitasker.enums.*;
 import com.aitasker.exception.AppException;
 import com.aitasker.repository.*;
+import com.aitasker.service.ConversationService;
 import com.aitasker.service.ProposalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ public class ProposalServiceImpl implements ProposalService {
     private final JobPostRepository jobRepo;
     private final UserRepository userRepo;
     private final ProjectRepository projectRepo;
+    private final ConversationService conversationService;
 
     @Override
     public ProposalResponse submitProposal(String expertId, SubmitProposalRequest request) {
@@ -79,11 +81,17 @@ public class ProposalServiceImpl implements ProposalService {
         jobRepo.save(job);
 
         // BR-21: Project auto-created on proposal acceptance
+        // Reuse a single shared conversation per client-expert pair so multiple
+        // tasks between the same two people don't fragment into separate threads
+        Conversation conversation = conversationService.findOrCreateDirect(
+                job.getClient().getId(), proposal.getExpert().getId());
+
         Project project = Project.builder()
                 .job(job)
                 .client(job.getClient())
                 .expert(proposal.getExpert())
                 .status(ProjectStatus.ACTIVE)
+                .conversation(conversation)
                 .build();
         projectRepo.save(project);
 

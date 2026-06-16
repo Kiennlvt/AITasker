@@ -27,8 +27,7 @@ public class MessageServiceImpl implements MessageService {
                 .orElseThrow(() -> AppException.notFound("Project not found"));
         if (!project.getClient().getId().equals(userId) && !project.getExpert().getId().equals(userId))
             throw AppException.forbidden("Access denied");
-        return messageRepo.findByProjectIdOrderByCreatedAtAsc(projectId)
-                .stream().map(this::toResponse).toList();
+        return getConversationMessages(userId, project.getConversation().getId());
     }
 
     @Override
@@ -50,7 +49,7 @@ public class MessageServiceImpl implements MessageService {
             if (!project.getClient().getId().equals(senderId) && !project.getExpert().getId().equals(senderId))
                 throw AppException.forbidden("You are not part of this project");
             Message message = Message.builder()
-                    .project(project)
+                    .conversation(project.getConversation())
                     .sender(sender)
                     .content(request.getContent())
                     .build();
