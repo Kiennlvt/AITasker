@@ -4,6 +4,7 @@ import {
   ClipboardList,
   MessageSquare,
   BriefcaseBusiness,
+  FileText,
 } from "lucide-react";
 import { Outlet } from "react-router-dom";
 import Header from "../ui/Header";
@@ -25,6 +26,11 @@ const menuItems = [
       name: "My Tasks",
       icon: <ClipboardList size={20} />,
       path: "/my-tasks",
+    },
+    {
+      name: "My Proposals",
+      icon: <FileText size={20} />,
+      path: "/my-proposals",
     },
     {
       name: "Profile",

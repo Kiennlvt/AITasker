@@ -12,6 +12,7 @@ import PostJob03 from "./pages/client/PostJob/PostJob03";
 import ExpertLayout from "./components/layout/ExpertLayout";
 import DashboardExpert from "./pages/expert/DashboardExpert";
 import MyTask from "./pages/expert/MyTask";
+import MyProposals from "./pages/expert/MyProposals";
 import ProfileExpert from "./pages/expert/ProfileExpert";
 import ManageProposals from "./pages/client/ManageProposals";
 import Messages from "./pages/Messenger/Messages";
@@ -90,6 +91,7 @@ export default function App() {
           <Route element={<ExpertLayout />}>
             <Route path="/dashboard-expert" element={<DashboardExpert />} />
             <Route path="/my-tasks" element={<MyTask />} />
+            <Route path="/my-proposals" element={<MyProposals />} />
             <Route path="/expert-profile" element={<ProfileExpert />} />
           </Route>
         </Route>
