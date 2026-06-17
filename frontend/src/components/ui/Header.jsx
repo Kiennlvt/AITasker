@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, Settings, User, LogOut, ChevronDown } from "lucide-react";
 import useAuthStore from "../../store/authStore";
+import SearchBar from "./SearchBar"; // 🌟 Nhớ import SearchBar xịn vào đây
 
-export default function Header({ children }) {
+export default function Header() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
 
@@ -28,11 +29,11 @@ export default function Header({ children }) {
   };
 
   return (
-    // 🌟 Thêm sticky top-0 và z-50 để Header luôn cố định khi cuộn nội dung Outlet ở dưới
     <header className="h-[90px] bg-white border-b border-gray-200 px-10 flex items-center justify-between sticky top-0 z-50">
       {/* SEARCH */}
       <div className="flex items-center">
-        {children}
+        {/* 🌟 THAY THẾ {children} THÀNH SearchBar XỊN CỐ ĐỊNH Ở ĐÂY */}
+        <SearchBar /> 
       </div>
 
       {/* RIGHT */}
@@ -49,7 +50,6 @@ export default function Header({ children }) {
 
         {/* AVATAR */}
         <div className="relative" ref={dropdownRef}>
-          {/* Nút bấm để Toggle đóng/mở */}
           <button 
             onClick={() => setIsOpen(!isOpen)} 
             className="flex items-center gap-3 hover:bg-gray-50 p-1.5 rounded-2xl transition-all outline-none"
@@ -72,7 +72,6 @@ export default function Header({ children }) {
             <ChevronDown size={16} className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
           </button>
 
-          {/* Hộp MENU THẢ XUỐNG (Dropdown) */}
           {isOpen && (
             <div className="absolute right-0 mt-3 w-56 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 z-50 animate-fadeIn min-w-[200px]">
               <div className="px-4 py-2 border-b border-gray-50 sm:hidden">
@@ -80,7 +79,6 @@ export default function Header({ children }) {
                 <p className="text-xs text-gray-400">{user?.role === "CLIENT" ? "Enterprise Client" : "Expert"}</p>
               </div>
 
-              {/* Lựa chọn 1: Xem Profile */}
               <button
                 onClick={() => { navigate(profilePath); setIsOpen(false); }}
                 className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-[#15153d] transition-all text-left"
@@ -91,7 +89,6 @@ export default function Header({ children }) {
 
               <div className="h-[1px] bg-gray-100 my-1"></div>
 
-              {/* Lựa chọn 3: Đăng xuất */}
               <button 
                 onClick={handleLogout}
                 className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-rose-500 hover:bg-rose-50 transition-all text-left"

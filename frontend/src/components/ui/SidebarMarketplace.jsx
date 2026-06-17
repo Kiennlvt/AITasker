@@ -20,8 +20,8 @@ const THEME_STYLES = {
 
 const DEFAULT_MENU_ITEMS = [
   { name: "Marketplace", icon: <Layers3 size={20} />, path: "/marketplace" },
-  { name: "Services",    icon: <ShoppingBag size={20} />, path: "/services" },
-  { name: "Dashboard",  icon: <BriefcaseBusiness size={20} />, path: "/dashboard" },
+  { name: "Services",     icon: <ShoppingBag size={20} />, path: "/services" },
+  { name: "Dashboard",   icon: <BriefcaseBusiness size={20} />, path: "/dashboard" },
 ];
 
 const CATEGORIES = [
@@ -48,7 +48,9 @@ export default function SidebarMarketplace({
 
   const selectedCategories = searchParams.getAll("category");
   const maxPrice = Number(searchParams.get("maxPrice") || MAX_PRICE);
-  const minRating = searchParams.get("minRating") || "";
+  
+  // 🌟 ĐÃ ĐỔI: Đọc trường 'rating' từ URL thay vì 'minRating' cũ
+  const ratingType = searchParams.get("rating") || "";
   const isServicesPage = pathname.startsWith("/services");
 
   function updateParams(updater) {
@@ -67,6 +69,7 @@ export default function SidebarMarketplace({
       if (current.includes(cat)) {
         current.filter((c) => c !== cat).forEach((c) => p.append("category", c));
       } else {
+        // Sửa lỗi cú pháp nhỏ gộp mảng cũ
         [...current, cat].forEach((c) => p.append("category", c));
       }
     });
@@ -80,10 +83,11 @@ export default function SidebarMarketplace({
     });
   }
 
+  // 🌟 ĐÃ ĐỔI: Hàm cập nhật đẩy đúng từ khóa 'rating' lên URL tương thích với Services.jsx
   function handleRatingChange(val) {
     updateParams((p) => {
-      if (val) p.set("minRating", val);
-      else p.delete("minRating");
+      if (val) p.set("rating", val);
+      else p.delete("rating");
     });
   }
 
@@ -167,24 +171,24 @@ export default function SidebarMarketplace({
           </div>
         </div>
 
-        {/* MIN. RATING — chỉ show trên trang /services */}
+        {/* 🌟 RATING SECTION — ĐÃ LÀM MỚI THEO KHOẢNG ĐIỂM YÊU CẦU */}
         {isServicesPage && (
           <div className="px-6 mt-8 mb-4">
             <h4 className="mb-4 text-xs font-black text-slate-800 uppercase tracking-wide">
-              Min. Rating
+              Rating
             </h4>
             <div className="space-y-3">
               {[
-                { label: "4.5 & up", value: "4.5" },
-                { label: "4.0 & up", value: "4.0" },
+                { label: "4.5 - 5.0", value: "4.5-5.0" },
+                { label: "4.0",       value: "4.0"     },
               ].map(({ label, value }) => (
                 <label key={value} className="flex items-center gap-3 text-sm text-slate-500 cursor-pointer">
                   <input
                     type="radio"
-                    name="rating"
+                    name="rating-filter"
                     className="accent-orange-500"
-                    checked={minRating === value}
-                    onChange={() => handleRatingChange(minRating === value ? "" : value)}
+                    checked={ratingType === value}
+                    onChange={() => handleRatingChange(value)}
                   />
                   <div className="flex items-center gap-1">
                     <Star size={14} className="fill-orange-400 text-orange-400" />
@@ -192,6 +196,18 @@ export default function SidebarMarketplace({
                   </div>
                 </label>
               ))}
+
+              {/* Nút All Ratings để xoá bộ lọc số sao khi cần */}
+              <label className="flex items-center gap-3 text-sm text-slate-500 cursor-pointer">
+                <input
+                  type="radio"
+                  name="rating-filter"
+                  className="accent-orange-500"
+                  checked={ratingType === ""}
+                  onChange={() => handleRatingChange("")}
+                />
+                <div className="text-slate-400 italic">All Ratings</div>
+              </label>
             </div>
           </div>
         )}
