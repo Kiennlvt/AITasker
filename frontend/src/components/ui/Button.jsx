@@ -3,11 +3,13 @@ export default function Button({
   variant = "primary",
   onClick,
   className = "",
-  leftIcon ,
+  leftIcon,
   rightIcon,
+  disabled = false,
+  type = "button",
 }) {
   const base =
-    "px-10 py-4 rounded-[24px] font-bold transition-all duration-300 active:scale-95";
+    "px-10 py-4 rounded-[24px] font-bold transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none";
 
   const variants = {
     primary:
@@ -22,10 +24,12 @@ export default function Button({
 
   return (
     <button
+      type={type}
       onClick={onClick}
+      disabled={disabled}
       className={`${base} ${variants[variant]} ${className}`}
     >
-      {/* Nếu có leftIcon thì render ra, không có thì bỏ qua == if else */}
+      {/* Nếu có leftIcon thì render ra, không có thì bỏ qua */}
       {leftIcon && (
         <span className="flex items-center shrink-0">{leftIcon}</span>
       )}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { TrendingUp, Briefcase, CheckCircle, Star } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from "recharts";
 import StatCard from "../../components/ui/StatCard";
 import DataTable from "../../components/ui/DataTable";
@@ -10,6 +11,7 @@ import { getMyProposals } from "../../api/proposals";
 import useAuthStore from "../../store/authStore";
 
 export default function DashboardExpert() {
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const [stats, setStats] = useState({ activeProjects: 0, pendingProposals: 0, totalEarnings: 0 });
   const [proposals, setProposals] = useState([]);
@@ -181,7 +183,10 @@ export default function DashboardExpert() {
               ))}
             </div>
           </div>
-          <button className="w-full h-12 border border-orange-200 hover:border-orange-500 text-orange-500 font-semibold text-sm rounded-xl mt-4 transition-all hover:bg-orange-50/30">
+          <button
+            onClick={() => navigate("/my-proposals")}
+            className="w-full h-12 border border-orange-200 hover:border-orange-500 text-orange-500 font-semibold text-sm rounded-xl mt-4 transition-all hover:bg-orange-50/30"
+          >
             View All Proposals
           </button>
         </div>

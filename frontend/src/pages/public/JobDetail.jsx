@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
 import { getJobById } from "../../api/jobs";
@@ -10,10 +10,12 @@ import useAuthStore from "../../store/authStore";
 
 export default function JobDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showApply, setShowApply] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [bid, setBid] = useState("");
   const [days, setDays] = useState("");
   const [cover, setCover] = useState("");
@@ -39,13 +41,25 @@ export default function JobDetail() {
         deliveryTime: Number(days),
         coverLetter: cover,
       });
-      toast.success("Proposal submitted!");
+      toast.success("Proposal submitted successfully!");
+      setSubmitted(true);
       setShowApply(false);
-    } catch {
-      toast.error("Failed to submit proposal");
+      setBid("");
+      setDays("");
+      setCover("");
+    } catch (err) {
+      const msg = err?.response?.data?.message;
+      toast.error(msg || "Failed to submit proposal");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleCancel = () => {
+    setShowApply(false);
+    setBid("");
+    setDays("");
+    setCover("");
   };
 
   if (loading) return <div className="p-10 text-gray-400">Loading...</div>;
@@ -108,8 +122,27 @@ export default function JobDetail() {
           {/* Proposal form */}
           {user?.role === "EXPERT" && (
             <Section title="Submit a Proposal">
-              {!showApply ? (
-                <Button onClick={() => setShowApply(true)}>Apply for this Job</Button>
+              {submitted ? (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 text-center space-y-3">
+                  <div className="text-3xl">🎉</div>
+                  <h3 className="font-bold text-emerald-700">Proposal Submitted!</h3>
+                  <p className="text-sm text-emerald-600">
+                    Your proposal has been sent successfully. The client will review it and get back to you soon.
+                  </p>
+                  <button
+                    onClick={() => navigate("/my-proposals")}
+                    className="mt-2 px-5 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition-all"
+                  >
+                    View My Proposals →
+                  </button>
+                </div>
+              ) : !showApply ? (
+                <div className="space-y-3">
+                  <Button onClick={() => setShowApply(true)}>Apply for this Job</Button>
+                  <p className="text-xs text-gray-400">
+                    You will need to fill in bid amount, delivery time and a cover letter.
+                  </p>
+                </div>
               ) : (
                 <div className="space-y-4 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
                   <div className="grid grid-cols-2 gap-4">
@@ -149,7 +182,7 @@ export default function JobDetail() {
                       {submitting ? "Submitting..." : "Submit Proposal"}
                     </Button>
                     <button
-                      onClick={() => setShowApply(false)}
+                      onClick={handleCancel}
                       className="px-4 py-2 text-sm font-semibold text-gray-500 hover:text-gray-700"
                     >
                       Cancel
