@@ -25,9 +25,9 @@ spring:
             user-info-uri: https://graph.facebook.com/v18.0/me?fields=id,name,email,picture
             user-name-attribute: id
   datasource:
-    url: jdbc:postgresql://localhost:5432/aitasker1
-    username: postgres
-    password: ${DB_PASSWORD:123456}
+    url: jdbc:postgresql://localhost:5432/aitasker_db
+    username: aitasker
+    password: secret
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -48,12 +48,12 @@ app:
   upload:
     dir: uploads
   jwt:
-    secret: "aItAsKeR_jWt_SeCrEt_KeY_2024_CHANGE_THIS_IN_PRODUCTION"
-    expiration-ms: 86400000
-    refresh-expiration-ms: 604800000
+    secret: aItAsKeR_jWt_SeCrEt_KeY_2024_CHANGE_THIS_IN_PRODUCTION
+    expiration-ms: 86400000        # 24h
+    refresh-expiration-ms: 604800000  # 7d
   cors:
     allowed-origins: http://localhost:3000,http://localhost:3001,http://localhost:5173,http://localhost:5174
   ai:
-    anthropic-api-key: "dummy-key"
+    anthropic-api-key: ${ANTHROPIC_API_KEY:}
   frontend:
     url: ${FRONTEND_URL:http://localhost:3000}
