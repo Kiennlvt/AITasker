@@ -15,7 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @Transactional
@@ -100,6 +102,8 @@ public class ProjectServiceImpl implements ProjectService {
         if (!project.getExpert().getId().equals(expertId))
             throw AppException.forbidden("Not your project");
 
+        validateMilestoneRequest(project, request, null);
+
         Milestone ms = Milestone.builder()
                 .project(project)
                 .title(request.getTitle())
@@ -118,11 +122,39 @@ public class ProjectServiceImpl implements ProjectService {
             throw AppException.forbidden("Not your project");
         if (ms.getStatus() != MilestoneStatus.PENDING)
             throw AppException.badRequest("Only PENDING milestones can be edited");
+
+        validateMilestoneRequest(ms.getProject(), request, ms.getId());
+
         ms.setTitle(request.getTitle());
         ms.setDescription(request.getDescription());
         ms.setAmount(request.getAmount());
         ms.setDueDate(request.getDueDate());
         return msToResponse(milestoneRepo.save(ms));
+    }
+
+    private void validateMilestoneRequest(Project project, CreateMilestoneRequest request, String excludeMilestoneId) {
+        if (request.getDueDate() == null)
+            throw AppException.badRequest("Due date is required");
+        if (!request.getDueDate().isAfter(LocalDate.now()))
+            throw AppException.badRequest("Due date must be in the future");
+
+        List<Milestone> others = (project.getMilestones() != null ? project.getMilestones() : List.<Milestone>of())
+                .stream()
+                .filter(m -> excludeMilestoneId == null || !m.getId().equals(excludeMilestoneId))
+                .toList();
+
+        LocalDate lastDueDate = others.stream()
+                .map(Milestone::getDueDate)
+                .filter(Objects::nonNull)
+                .max(LocalDate::compareTo)
+                .orElse(null);
+        if (lastDueDate != null && !request.getDueDate().isAfter(lastDueDate))
+            throw AppException.badRequest("Due date must be later than the previous milestone's due date");
+
+        double existingTotal = others.stream().mapToDouble(m -> m.getAmount() != null ? m.getAmount() : 0).sum();
+        double budget = project.getJob().getBudget();
+        if (existingTotal + request.getAmount() > budget)
+            throw AppException.badRequest("Total milestone amount cannot exceed the project budget");
     }
 
     @Override
