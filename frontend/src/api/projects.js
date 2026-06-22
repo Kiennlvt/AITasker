@@ -9,6 +9,13 @@ export const getProjectById = (id) =>
 export const getMilestones = (projectId) =>
   api.get(`/projects/${projectId}/milestones`).then(r => r.data.data);
 
+
+export const createMilestone = (projectId, milestone) =>
+  api.post(`/projects/${projectId}/milestones`, milestone).then(r => r.data.data);
+
+export const updateMilestone = (projectId, milestoneId, milestone) =>
+  api.put(`/projects/${projectId}/milestones/${milestoneId}`, milestone).then(r => r.data.data);
+
 export const approveMilestone = (milestoneId) =>
   api.patch(`/projects/milestones/${milestoneId}/approve`).then(r => r.data.data);
 
