@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Clock, UploadCloud, Info, ArrowLeft, ChevronRight, Briefcase, X, FileText, RefreshCw } from "lucide-react";
-import { getMyProjects, getMilestones, submitMilestone, uploadMilestoneFiles } from "../../api/projects";
+import { CheckCircle2, Clock, UploadCloud, Info, ArrowLeft, ChevronRight, Briefcase, X, FileText, RefreshCw, Plus } from "lucide-react";
+import { getMyProjects, getMilestones, submitMilestone, uploadMilestoneFiles, createMilestone } from "../../api/projects";
 import toast from "react-hot-toast";
 
 function milestoneUi(status) {
@@ -28,6 +28,9 @@ export default function MyTask() {
   const [note, setNote] = useState("");
   const [files, setFiles] = useState([]);
   const [dragging, setDragging] = useState(false);
+  const [showAddMilestone, setShowAddMilestone] = useState(false);
+  const [creatingMilestone, setCreatingMilestone] = useState(false);
+  const [newMilestone, setNewMilestone] = useState({ title: "", description: "", amount: "", dueDate: "" });
   const fileInputRef = useRef(null);
   const pollingRef = useRef(null);
 
@@ -97,6 +100,31 @@ export default function MyTask() {
       toast.error("Failed to submit milestone");
     } finally {
       setSubmitting(null);
+    }
+  };
+
+  const handleCreateMilestone = async () => {
+    const title = newMilestone.title.trim();
+    const amount = parseFloat(newMilestone.amount);
+    if (!title) { toast.error("Please enter a milestone title."); return; }
+    if (!newMilestone.amount || isNaN(amount) || amount <= 0) { toast.error("Please enter a valid amount."); return; }
+
+    setCreatingMilestone(true);
+    try {
+      const created = await createMilestone(selectedProject.id, {
+        title,
+        description: newMilestone.description.trim(),
+        amount,
+        dueDate: newMilestone.dueDate || null,
+      });
+      setMilestones((prev) => [...prev, created]);
+      setNewMilestone({ title: "", description: "", amount: "", dueDate: "" });
+      setShowAddMilestone(false);
+      toast.success("Milestone added!");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to create milestone");
+    } finally {
+      setCreatingMilestone(false);
     }
   };
 
@@ -235,16 +263,75 @@ export default function MyTask() {
               <h3 className="text-lg font-bold text-[#15153d] flex items-center gap-2">
                 <CheckCircle2 className="text-orange-500" /> Project Milestones
               </h3>
-              <button
-                onClick={handleRefreshMilestones}
-                disabled={refreshing}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-gray-500 border border-gray-200 rounded-lg hover:border-orange-300 hover:text-orange-500 transition-all disabled:opacity-50"
-              >
-                <RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />
-                Refresh
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowAddMilestone((v) => !v)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition-all"
+                >
+                  <Plus size={12} />
+                  Add Milestone
+                </button>
+                <button
+                  onClick={handleRefreshMilestones}
+                  disabled={refreshing}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-gray-500 border border-gray-200 rounded-lg hover:border-orange-300 hover:text-orange-500 transition-all disabled:opacity-50"
+                >
+                  <RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />
+                  Refresh
+                </button>
+              </div>
             </div>
             <p className="text-sm text-gray-400 mb-6">{selectedProject.jobTitle}</p>
+
+            {showAddMilestone && (
+              <div className="mb-6 p-5 bg-gray-50/60 border border-gray-100 rounded-2xl space-y-3">
+                <input
+                  type="text"
+                  value={newMilestone.title}
+                  onChange={(e) => setNewMilestone((p) => ({ ...p, title: e.target.value }))}
+                  placeholder="Milestone title"
+                  className="w-full p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-orange-400"
+                />
+                <textarea
+                  value={newMilestone.description}
+                  onChange={(e) => setNewMilestone((p) => ({ ...p, description: e.target.value }))}
+                  placeholder="Description (optional)"
+                  className="w-full p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-orange-400 min-h-[80px] resize-none"
+                />
+                <div className="flex gap-3">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={newMilestone.amount}
+                    onChange={(e) => setNewMilestone((p) => ({ ...p, amount: e.target.value }))}
+                    placeholder="Amount ($)"
+                    className="flex-1 p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-orange-400"
+                  />
+                  <input
+                    type="date"
+                    value={newMilestone.dueDate}
+                    onChange={(e) => setNewMilestone((p) => ({ ...p, dueDate: e.target.value }))}
+                    className="flex-1 p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-orange-400"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCreateMilestone}
+                    disabled={creatingMilestone}
+                    className="px-4 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-orange-600 transition-all disabled:opacity-50"
+                  >
+                    {creatingMilestone ? "Adding..." : "Save Milestone"}
+                  </button>
+                  <button
+                    onClick={() => { setShowAddMilestone(false); setNewMilestone({ title: "", description: "", amount: "", dueDate: "" }); }}
+                    className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:border-gray-300 transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
 
             {milestones.length === 0 && (
               <p className="text-sm text-gray-400">No milestones defined for this project.</p>
