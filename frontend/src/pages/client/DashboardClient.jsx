@@ -2,7 +2,6 @@ import {
   Briefcase,
   ClipboardCheck,
   DollarSign,
-  Sparkles,
   ArrowRight,
   FileEdit,
   Send,
@@ -133,11 +132,6 @@ export default function DashboardClient() {
             Welcome back, <span className="font-semibold text-orange-500">{user?.fullName}</span>!
           </p>
         </div>
-        <Link to="/post-job/step-1">
-          <Button className="flex gap-2 px-6" variant="primary" leftIcon={<Sparkles size={16} />}>
-            New Project
-          </Button>
-        </Link>
       </div>
 
       {/* STATS */}
