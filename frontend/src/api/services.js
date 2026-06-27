@@ -8,3 +8,6 @@ export const getServiceById = (id) =>
 
 export const getMyServices = () =>
   api.get('/services/my-services').then(r => r.data.data);
+
+export const createService = (data) =>
+  api.post('/services', data).then(r => r.data.data);

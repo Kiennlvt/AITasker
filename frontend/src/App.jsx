@@ -1,4 +1,3 @@
-
 // Entry point — router sẽ được mount ở đây sau
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Error404 from "./pages/404/404";
@@ -14,6 +13,7 @@ import DashboardExpert from "./pages/expert/DashboardExpert";
 import MyTask from "./pages/expert/MyTask";
 import MyProposals from "./pages/expert/MyProposals";
 import ProfileExpert from "./pages/expert/ProfileExpert";
+import PostService from "./pages/expert/PostService";
 import ManageProposals from "./pages/client/ManageProposals";
 import Messages from "./pages/Messenger/Messages";
 import ProjectDetailClient from "./pages/client/Project/ProjectDetailClient";
@@ -58,7 +58,7 @@ export default function App() {
 
         <Route element={<PublicLayout />}>
           <Route path="/marketplace" element={<Marketplace />} />
-          <Route path="/jobs/:id" element={<JobDetail />} />
+<Route path="/jobs/:id" element={<JobDetail />} />
           <Route path="/services" element={<Services />} />
           <Route path="/services/:id" element={<ServiceDetail />} />
         </Route>
@@ -93,6 +93,7 @@ export default function App() {
             <Route path="/my-tasks" element={<MyTask />} />
             <Route path="/my-proposals" element={<MyProposals />} />
             <Route path="/expert-profile" element={<ProfileExpert />} />
+            <Route path="/post-service" element={<PostService />} />
           </Route>
         </Route>
 
