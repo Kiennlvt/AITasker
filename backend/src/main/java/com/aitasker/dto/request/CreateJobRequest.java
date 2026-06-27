@@ -11,8 +11,9 @@ import java.util.List;
 @Data
 public class CreateJobRequest {
     @NotBlank private String title;
-    @NotBlank private String description;
-    @NotNull @Min(1) private Double budget;
+    private String description;
+    private Double budget;
     private LocalDate deadline;
     private List<String> skills;
+    private boolean draft;
 }

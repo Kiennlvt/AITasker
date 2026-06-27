@@ -14,3 +14,15 @@ export const createJob = (data) =>
 
 export const deleteJob = (id) =>
   api.delete(`/jobs/${id}`).then(r => r.data);
+
+export const updateJob = (id, data) =>
+  api.put(`/jobs/${id}`, data).then(r => r.data.data);
+
+export const saveDraft = (data) =>
+  api.post('/jobs', { ...data, draft: true }).then(r => r.data.data);
+
+export const getMyDrafts = () =>
+  api.get('/jobs/my-drafts').then(r => r.data.data);
+
+export const publishDraft = (id) =>
+  api.patch(`/jobs/${id}/publish`).then(r => r.data.data);

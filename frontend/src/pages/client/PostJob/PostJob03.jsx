@@ -5,7 +5,7 @@ import Button from "@/components/ui/Button";
 import StepBar from "../../../components/ui/StepBar";
 import usePostJobStore from "../../../store/postJobStore";
 import { generatePRD, suggestExperts } from "../../../api/ai";
-import { createJob } from "../../../api/jobs";
+import { createJob, saveDraft, updateJob, publishDraft } from "../../../api/jobs";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -219,6 +219,7 @@ export default function PostJob03() {
   const [isGenerated,  setIsGenerated]  = useState(false);
   const [experts,      setExperts]      = useState([]);
   const [isFallback,   setIsFallback]   = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   // ── Initialize sections from store on mount ──
   const initialPRD        = store.generatedPRD;
@@ -335,13 +336,61 @@ export default function PostJob03() {
         skills: [store.category],
       };
 
-      await createJob(payload);
+      if (store.draftId) {
+        // Editing existing draft → update then publish
+        await updateJob(store.draftId, payload);
+        await publishDraft(store.draftId);
+      } else {
+        await createJob(payload);
+      }
       toast.success("Project posted successfully!");
       store.reset();
       navigate("/dashboard");
     } catch (err) {
       console.error(err);
-      toast.error("Failed to post job. Please try again.");
+      toast.error(err?.response?.data?.message || "Failed to post job. Please try again.");
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    setIsSavingDraft(true);
+    try {
+      const BUDGET_MAP = { basic: 1000, standard: 5000, premium: 15000 };
+
+      const TIMELINE_UNIT_MAP = { Tháng: "months", Tuần: "weeks", Ngày: "days" };
+      let deadline = null;
+      if (store.timelineAmount && store.timelineUnit) {
+        const d = new Date();
+        const amount = parseInt(store.timelineAmount, 10);
+        const unit = TIMELINE_UNIT_MAP[store.timelineUnit] ?? "months";
+        if (unit === "months") d.setMonth(d.getMonth() + amount);
+        else if (unit === "weeks") d.setDate(d.getDate() + amount * 7);
+        else d.setDate(d.getDate() + amount);
+        deadline = d.toISOString().split("T")[0];
+      }
+
+      const payload = {
+        title: store.title,
+        description: isAIMode ? aiContent : buildDocumentFromSections(),
+        budget: BUDGET_MAP[store.selectedPackage] ?? 1000,
+        deadline,
+        skills: [store.category],
+      };
+
+      if (store.draftId) {
+        // Editing existing draft → update it
+        await updateJob(store.draftId, payload);
+      } else {
+        await saveDraft(payload);
+      }
+      toast.success("Draft saved successfully!");
+      store.reset();
+      navigate("/dashboard");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to save draft. Please try again.");
+    } finally {
+      setIsSavingDraft(false);
     }
   };
 
@@ -354,9 +403,13 @@ export default function PostJob03() {
         {/* ── CARD HEADER ── */}
         <div className="bg-[#f4f6ff] px-8 py-6 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h2 className="text-3xl font-bold text-[#15153d]">Review & Publish</h2>
+            <h2 className="text-3xl font-bold text-[#15153d]">
+              {store.draftId ? "Edit Draft" : "Review & Publish"}
+            </h2>
             <p className="text-gray-500 mt-1 text-sm">
-              Review the details auto-filled from your form. Optionally let AI enhance it.
+              {store.draftId
+                ? "Continue editing your draft. Publish when ready."
+                : "Review the details auto-filled from your form. Optionally let AI enhance it."}
             </p>
           </div>
 
@@ -519,10 +572,11 @@ export default function PostJob03() {
             <div className="flex items-center gap-4">
               <button
                 type="button"
-                onClick={() => toast.success("Draft saved!")}
-                className="text-gray-500 hover:text-gray-700 font-semibold text-lg px-4 py-2"
+                onClick={handleSaveDraft}
+                disabled={isSavingDraft}
+                className="text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-lg px-4 py-2"
               >
-                Save as Draft
+                {isSavingDraft ? "Saving..." : "Save as Draft"}
               </button>
               <Button
                 variant="primary"

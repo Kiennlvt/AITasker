@@ -72,6 +72,19 @@ public class JobController {
         return ApiResponse.ok(jobService.closeJob(user.getUsername(), id));
     }
 
+    @GetMapping("/my-drafts")
+    @PreAuthorize("hasRole('CLIENT')")
+    public ApiResponse<List<JobResponse>> getMyDrafts(@AuthenticationPrincipal UserDetails user) {
+        return ApiResponse.ok(jobService.getMyDrafts(user.getUsername()));
+    }
+
+    @PatchMapping("/{id}/publish")
+    @PreAuthorize("hasRole('CLIENT')")
+    public ApiResponse<JobResponse> publishDraft(@AuthenticationPrincipal UserDetails user,
+                                                  @PathVariable String id) {
+        return ApiResponse.ok(jobService.publishDraft(user.getUsername(), id));
+    }
+
     @PostMapping("/ai-suggest")
     @PreAuthorize("hasRole('CLIENT')")
     public ApiResponse<JobSuggestionDto> aiSuggest(@RequestBody AiSuggestRequest request) {
