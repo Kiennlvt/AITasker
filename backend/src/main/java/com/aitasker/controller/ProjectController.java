@@ -36,6 +36,13 @@ public class ProjectController {
         return ApiResponse.ok(projectService.getProjectById(user.getUsername(), id));
     }
 
+    @PatchMapping("/{projectId}/finish")
+    @PreAuthorize("hasRole('CLIENT')")
+    public ApiResponse<ProjectResponse> finishProject(@AuthenticationPrincipal UserDetails user,
+                                                       @PathVariable String projectId) {
+        return ApiResponse.ok(projectService.finishProject(user.getUsername(), projectId));
+    }
+
     @PatchMapping("/milestones/{milestoneId}/approve")
     public ApiResponse<ProjectResponse> approveDeliverable(@AuthenticationPrincipal UserDetails user,
                                                             @PathVariable String milestoneId) {

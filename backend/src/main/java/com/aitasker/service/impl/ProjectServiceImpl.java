@@ -57,15 +57,27 @@ public class ProjectServiceImpl implements ProjectService {
 
         ms.setStatus(MilestoneStatus.APPROVED);
         milestoneRepo.save(ms);
+        return toResponse(ms.getProject());
+    }
 
-        // BR-26: if all milestones approved → project completed
-        Project project = ms.getProject();
-        boolean allApproved = project.getMilestones().stream()
-                .allMatch(m -> m.getStatus() == MilestoneStatus.APPROVED);
-        if (allApproved) {
-            project.setStatus(ProjectStatus.COMPLETED);
-            projectRepo.save(project);
-        }
+    @Override
+    public ProjectResponse finishProject(String clientId, String projectId) {
+        Project project = projectRepo.findById(projectId)
+                .orElseThrow(() -> AppException.notFound("Project not found"));
+        if (!project.getClient().getId().equals(clientId))
+            throw AppException.forbidden("Not your project");
+        if (project.getStatus() == ProjectStatus.COMPLETED)
+            throw AppException.badRequest("Project is already completed");
+
+        List<Milestone> ms = project.getMilestones() != null ? project.getMilestones() : List.of();
+        if (ms.isEmpty())
+            throw AppException.badRequest("Project has no milestones");
+        boolean allApproved = ms.stream().allMatch(m -> m.getStatus() == MilestoneStatus.APPROVED);
+        if (!allApproved)
+            throw AppException.badRequest("All milestones must be approved before finishing");
+
+        project.setStatus(ProjectStatus.COMPLETED);
+        projectRepo.save(project);
         return toResponse(project);
     }
 
