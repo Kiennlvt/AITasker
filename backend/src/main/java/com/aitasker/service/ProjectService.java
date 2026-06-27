@@ -13,6 +13,7 @@ public interface ProjectService {
     ProjectResponse approveDeliverable(String clientId, String milestoneId);
     ProjectResponse requestRevision(String clientId, String milestoneId, String note);
     ProjectResponse submitDeliverable(String expertId, String milestoneId, String note);
+    ProjectResponse finishProject(String clientId, String projectId);
     MilestoneResponse createMilestone(String expertId, String projectId, CreateMilestoneRequest request);
     MilestoneResponse updateMilestone(String expertId, String milestoneId, CreateMilestoneRequest request);
     List<MilestoneResponse> getMilestones(String userId, String projectId);
