@@ -3,10 +3,12 @@ import { SlidersHorizontal, ArrowUpDown, Star, Sparkles, ArrowRight } from "luci
 import { useNavigate } from "react-router-dom";
 import MessagesIcon from "../../components/ui/MesageIcon";
 import Button from "../../components/ui/Button";
-import { getMyJobs } from "../../api/jobs";
+import { getMyJobs, deleteJob } from "../../api/jobs";
 import { getProposalsByJob, acceptProposal, rejectProposal } from "../../api/proposals";
 import { findOrCreateDirect } from "../../api/conversations";
 import toast from "react-hot-toast";
+
+import usePostJobStore from "../../store/postJobStore";
 
 export default function ManageProposals() {
   const navigate = useNavigate();
@@ -17,6 +19,9 @@ export default function ManageProposals() {
   const [loadingProposals, setLoadingProposals] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
   const [messageLoading, setMessageLoading] = useState(null);
+
+  // Store actions
+  const loadDraft = usePostJobStore((state) => state.loadDraft);
 
   useEffect(() => {
     getMyJobs()
@@ -41,10 +46,13 @@ export default function ManageProposals() {
     setActionLoading(id + "-accept");
     try {
       await acceptProposal(id);
+      // Refetch jobs to get updated status
+      const updatedJobs = await getMyJobs();
+      setJobs(updatedJobs);
       setProposals((prev) =>
         prev.map((p) => (p.id === id ? { ...p, status: "ACCEPTED" } : p))
       );
-      toast.success("Proposal accepted!");
+      toast.success("Proposal accepted! The job is now in progress.");
     } catch {
       toast.error("Failed to accept proposal");
     } finally {
@@ -80,6 +88,38 @@ export default function ManageProposals() {
   };
 
   const selectedJob = jobs.find((j) => j.id === selectedJobId);
+
+  // Check if any proposal has been accepted for the selected job
+  const hasAcceptedProposal = proposals.some((p) => p.status === "ACCEPTED");
+
+  const handleEdit = () => {
+    if (selectedJob) {
+      loadDraft(selectedJob);
+      navigate("/post-job/step-1");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (window.confirm("Are you sure you want to delete this job post? This action cannot be undone.")) {
+      setActionLoading('delete');
+      try {
+        await deleteJob(selectedJobId);
+        toast.success("Job post deleted successfully.");
+        const remainingJobs = jobs.filter(job => job.id !== selectedJobId);
+        setJobs(remainingJobs);
+        if (remainingJobs.length > 0) {
+          setSelectedJobId(remainingJobs[0].id);
+        } else {
+          setSelectedJobId(null);
+        }
+      } catch (error) {
+        const errorMsg = error.response?.data?.message || "Failed to delete job post.";
+        toast.error(errorMsg);
+      } finally {
+        setActionLoading(null);
+      }
+    }
+  };
 
   const statusBadge = (status) => {
     if (status === "ACCEPTED") return "bg-emerald-50 text-emerald-600 border border-emerald-200";
@@ -142,6 +182,25 @@ export default function ManageProposals() {
                   </span>
                 </span>
               </div>
+            </div>
+            <div className="flex items-center gap-3">
+              {selectedJob && !hasAcceptedProposal && (
+                <>
+                  <button
+                    onClick={handleEdit}
+                    className="bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-2 px-6 rounded-xl transition-colors shadow-sm min-w-[120px]"
+                  >
+                    Edit Job
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    disabled={actionLoading === 'delete'}
+                    className="bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-2 px-6 rounded-xl transition-colors shadow-sm min-w-[120px] disabled:opacity-50"
+                  >
+                    {actionLoading === 'delete' ? 'Deleting...' : 'Delete Job'}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

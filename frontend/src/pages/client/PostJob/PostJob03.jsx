@@ -337,13 +337,21 @@ export default function PostJob03() {
       };
 
       if (store.draftId) {
-        // Editing existing draft → update then publish
+        // Editing existing draft or open job → update
         await updateJob(store.draftId, payload);
-        await publishDraft(store.draftId);
+        if (store.jobStatus === 'DRAFT') {
+          await publishDraft(store.draftId);
+        }
       } else {
         await createJob(payload);
       }
-      toast.success("Project posted successfully!");
+      
+      if (store.draftId && store.jobStatus !== 'DRAFT') {
+        toast.success("Project updated successfully!");
+      } else {
+        toast.success("Project posted successfully!");
+      }
+      
       store.reset();
       navigate("/dashboard");
     } catch (err) {
@@ -570,20 +578,22 @@ export default function PostJob03() {
               ← Back
             </button>
             <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={handleSaveDraft}
-                disabled={isSavingDraft}
-                className="text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-lg px-4 py-2"
-              >
-                {isSavingDraft ? "Saving..." : "Save as Draft"}
-              </button>
+              {(!store.draftId || store.jobStatus === 'DRAFT') && (
+                <button
+                  type="button"
+                  onClick={handleSaveDraft}
+                  disabled={isSavingDraft}
+                  className="text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-lg px-4 py-2"
+                >
+                  {isSavingDraft ? "Saving..." : "Save as Draft"}
+                </button>
+              )}
               <Button
                 variant="primary"
                 onClick={handlePostJobNow}
                 className="!px-8 flex items-center gap-2"
               >
-                Post Job Now 🚀
+                {store.draftId && store.jobStatus !== 'DRAFT' ? "Update Job 📝" : "Post Job Now 🚀"}
               </Button>
             </div>
           </div>

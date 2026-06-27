@@ -16,6 +16,7 @@ const usePostJobStore = create((set) => ({
   suggestedExperts: [],
   // Draft editing
   draftId: null,
+  jobStatus: null,
 
   updateStep1: (fields) => set(fields),
   updateStep2: (fields) => set(fields),
@@ -24,6 +25,7 @@ const usePostJobStore = create((set) => ({
   loadDraft: (draft) =>
     set({
       draftId: draft.id,
+      jobStatus: draft.status || 'DRAFT',
       title: draft.title || '',
       category: draft.skills?.[0] || 'Natural Language Processing',
       description: draft.description || '',
@@ -45,6 +47,7 @@ const usePostJobStore = create((set) => ({
       generatedPRD: '',
       suggestedExperts: [],
       draftId: null,
+      jobStatus: null,
     }),
 }));
 
