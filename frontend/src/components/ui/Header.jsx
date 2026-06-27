@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Settings, User, LogOut, ChevronDown } from "lucide-react";
+import { Bell, Settings, User, LogOut, ChevronDown, Plus } from "lucide-react";
 import useAuthStore from "../../store/authStore";
 import SearchBar from "./SearchBar"; // 🌟 Nhớ import SearchBar xịn vào đây
 
@@ -38,6 +38,24 @@ export default function Header() {
 
       {/* RIGHT */}
       <div className="flex items-center gap-6">
+        {user?.role === "CLIENT" && (
+          <button
+            onClick={() => navigate("/post-job/step-1")}
+            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-full transition-colors"
+          >
+            <Plus size={16} />
+            Post Job
+          </button>
+        )}
+        {user?.role === "EXPERT" && (
+          <button
+            onClick={() => navigate("/post-service")}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-5 py-2.5 rounded-full transition-colors"
+          >
+            <Plus size={16} />
+            Post Service
+          </button>
+        )}
         <button className="text-[#1a1a3c] hover:opacity-80 transition-opacity">
           <Bell size={22} />
         </button>
@@ -57,7 +75,7 @@ export default function Header() {
             <div className="text-right hidden sm:block">
               <h4 className="font-bold text-sm text-[#15153d]">{user?.fullName || "User"}</h4>
               <span className="text-xs text-gray-400 font-medium">{user?.role === "CLIENT" ? "Enterprise Client" : "Expert"}</span>
-            </div>
+</div>
             {user?.avatarUrl ? (
               <img
                 src={user.avatarUrl}
