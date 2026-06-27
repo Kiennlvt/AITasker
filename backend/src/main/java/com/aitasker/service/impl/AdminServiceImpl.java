@@ -11,7 +11,6 @@ import com.aitasker.exception.AppException;
 import com.aitasker.repository.JobPostRepository;
 import com.aitasker.repository.ProposalRepository;
 import com.aitasker.repository.UserRepository;
-import com.aitasker.service.AdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,9 +18,11 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+import com.aitasker.service.AdminRepository;
+
 @Service
 @RequiredArgsConstructor
-public class AdminServiceImpl implements AdminService {
+public class AdminServiceImpl implements AdminRepository {
 
     private final UserRepository userRepo;
     private final JobPostRepository jobRepo;

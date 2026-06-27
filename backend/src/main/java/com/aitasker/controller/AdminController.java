@@ -4,14 +4,13 @@ import com.aitasker.dto.response.AdminStatsResponse;
 import com.aitasker.dto.response.ApiResponse;
 import com.aitasker.dto.response.JobResponse;
 import com.aitasker.dto.response.UserResponse;
-import com.aitasker.service.AdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
+import com.aitasker.service.AdminRepository;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -19,7 +18,7 @@ import java.util.List;
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
 
-    private final AdminService adminService;
+    private final AdminRepository adminService;
 
     @GetMapping("/users")
     public ApiResponse<List<UserResponse>> getAllUsers(
