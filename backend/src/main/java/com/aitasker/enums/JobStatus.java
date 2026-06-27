@@ -1,2 +1,2 @@
 package com.aitasker.enums;
-public enum JobStatus { OPEN, IN_PROGRESS, COMPLETED, CANCELLED, DISPUTED }
+public enum JobStatus { DRAFT, OPEN, IN_PROGRESS, COMPLETED, CANCELLED, DISPUTED }

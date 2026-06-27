@@ -4,9 +4,13 @@ import {
   DollarSign,
   Sparkles,
   ArrowRight,
+  FileEdit,
+  Send,
+  Trash2,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import MessagesIcon from "../../components/ui/MesageIcon";
 import Button from "../../components/ui/Button";
 import StatCard from "../../components/ui/StatCard";
@@ -14,13 +18,19 @@ import DataTable from "../../components/ui/DataTable";
 import { clientTable } from "../../data/clientTable";
 import { topExpertsData } from "../../data/dashboardClientMockData";
 import { getClientDashboard, getMyProjects } from "../../api/dashboard";
+import { getMyDrafts, publishDraft, deleteJob } from "../../api/jobs";
 import useAuthStore from "../../store/authStore";
+import usePostJobStore from "../../store/postJobStore";
 
 export default function DashboardClient() {
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const [stats, setStats] = useState({ activeJobs: 0, pendingReview: 0, totalSpend: 0 });
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [drafts, setDrafts] = useState([]);
+  const [draftsLoading, setDraftsLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(null);
 
   useEffect(() => {
     Promise.all([getClientDashboard(), getMyProjects()])
@@ -49,6 +59,39 @@ export default function DashboardClient() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [user]);
+
+  useEffect(() => {
+    getMyDrafts()
+      .then(setDrafts)
+      .catch(() => {})
+      .finally(() => setDraftsLoading(false));
+  }, []);
+
+  const handlePublishDraft = async (id) => {
+    setActionLoading(id + "-publish");
+    try {
+      await publishDraft(id);
+      setDrafts((prev) => prev.filter((d) => d.id !== id));
+      toast.success("Job published successfully!");
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to publish draft");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeleteDraft = async (id) => {
+    setActionLoading(id + "-delete");
+    try {
+      await deleteJob(id);
+      setDrafts((prev) => prev.filter((d) => d.id !== id));
+      toast.success("Draft deleted");
+    } catch {
+      toast.error("Failed to delete draft");
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const statsData = [
     {
@@ -111,6 +154,72 @@ export default function DashboardClient() {
           />
         ))}
       </div>
+
+      {/* DRAFTS SECTION */}
+      {!draftsLoading && drafts.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <FileEdit size={18} className="text-orange-500" />
+              <h3 className="font-bold text-[#1a1a3c] uppercase tracking-wider text-xs">
+                My Drafts ({drafts.length})
+              </h3>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {drafts.map((draft) => (
+              <div
+                key={draft.id}
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-orange-200 transition-colors"
+              >
+                <div className="flex-1 min-w-0 mr-4">
+                  <h4 className="font-semibold text-[#1a1a3c] text-sm truncate">{draft.title}</h4>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-xs text-gray-400">
+                      {draft.skills?.join(", ") || "No skills"}
+                    </span>
+                    <span className="text-xs text-gray-400">·</span>
+                    <span className="text-xs text-gray-400">
+                      ${draft.budget?.toLocaleString() ?? 0}
+                    </span>
+                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+                      Draft
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      usePostJobStore.getState().loadDraft(draft);
+                      navigate("/post-job/step-3");
+                    }}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-600 text-xs font-semibold rounded-lg transition-colors"
+                  >
+                    <FileEdit size={12} />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handlePublishDraft(draft.id)}
+                    disabled={actionLoading === draft.id + "-publish"}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-[#15153d] hover:bg-[#1f1f5a] text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <Send size={12} />
+                    {actionLoading === draft.id + "-publish" ? "Publishing..." : "Publish"}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteDraft(draft.id)}
+                    disabled={actionLoading === draft.id + "-delete"}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <Trash2 size={12} />
+                    {actionLoading === draft.id + "-delete" ? "Deleting..." : "Delete"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* MAIN SECTION */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

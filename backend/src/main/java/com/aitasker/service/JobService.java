@@ -17,4 +17,6 @@ public interface JobService {
     List<JobResponse> getMyJobs(String clientId);
     JobResponse closeJob(String clientId, String jobId);
     JobSuggestionDto suggestJobImprovement(String title, String description);
+    List<JobResponse> getMyDrafts(String clientId);
+    JobResponse publishDraft(String clientId, String jobId);
 }

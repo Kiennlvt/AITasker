@@ -45,13 +45,21 @@ public class JobServiceImpl implements JobService {
         User client = userRepo.findById(clientId)
                 .orElseThrow(() -> AppException.notFound("User not found"));
 
+        if (!request.isDraft()) {
+            if (request.getDescription() == null || request.getDescription().isBlank())
+                throw AppException.badRequest("Description is required");
+            if (request.getBudget() == null || request.getBudget() < 1)
+                throw AppException.badRequest("Budget must be at least 1");
+        }
+
         JobPost job = JobPost.builder()
                 .client(client)
                 .title(request.getTitle())
-                .description(request.getDescription())
-                .budget(request.getBudget())
+                .description(request.getDescription() != null ? request.getDescription() : "")
+                .budget(request.getBudget() != null ? request.getBudget() : 0.0)
                 .deadline(request.getDeadline())
                 .skills(request.getSkills())
+                .status(request.isDraft() ? JobStatus.DRAFT : JobStatus.OPEN)
                 .build();
 
         return toResponse(jobRepo.save(job));
@@ -112,6 +120,29 @@ public class JobServiceImpl implements JobService {
                 .budgetRange(new JobSuggestionDto.BudgetRange(500, 5000))
                 .estimatedTimeline("2-4 weeks")
                 .build();
+    }
+
+    @Override
+    public List<JobResponse> getMyDrafts(String clientId) {
+        return jobRepo.findByClientIdAndStatusOrderByCreatedAtDesc(clientId, JobStatus.DRAFT)
+                .stream().map(this::toResponse).toList();
+    }
+
+    @Override
+    public JobResponse publishDraft(String clientId, String jobId) {
+        JobPost job = jobRepo.findById(jobId)
+                .orElseThrow(() -> AppException.notFound("Job not found"));
+        if (!job.getClient().getId().equals(clientId))
+            throw AppException.forbidden("Not your job");
+        if (job.getStatus() != JobStatus.DRAFT)
+            throw AppException.badRequest("Only draft jobs can be published");
+        if (job.getDescription() == null || job.getDescription().isBlank())
+            throw AppException.badRequest("Description is required before publishing");
+        if (job.getBudget() == null || job.getBudget() < 1)
+            throw AppException.badRequest("Budget must be at least 1 before publishing");
+
+        job.setStatus(JobStatus.OPEN);
+        return toResponse(jobRepo.save(job));
     }
 
     private JobResponse toResponse(JobPost job) {

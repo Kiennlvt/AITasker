@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+const BUDGET_TO_PACKAGE = { 1000: 'basic', 5000: 'standard', 15000: 'premium' };
+
 const usePostJobStore = create((set) => ({
   // Step 1
   title: '',
@@ -12,10 +14,26 @@ const usePostJobStore = create((set) => ({
   // AI results
   generatedPRD: '',
   suggestedExperts: [],
+  // Draft editing
+  draftId: null,
 
   updateStep1: (fields) => set(fields),
   updateStep2: (fields) => set(fields),
   setAIResults: ({ prd, experts }) => set({ generatedPRD: prd, suggestedExperts: experts }),
+
+  loadDraft: (draft) =>
+    set({
+      draftId: draft.id,
+      title: draft.title || '',
+      category: draft.skills?.[0] || 'Natural Language Processing',
+      description: draft.description || '',
+      selectedPackage: BUDGET_TO_PACKAGE[draft.budget] || 'basic',
+      generatedPRD: draft.description || '',
+      suggestedExperts: [],
+      timelineAmount: '',
+      timelineUnit: 'Tháng',
+    }),
+
   reset: () =>
     set({
       title: '',
@@ -26,6 +44,7 @@ const usePostJobStore = create((set) => ({
       selectedPackage: 'basic',
       generatedPRD: '',
       suggestedExperts: [],
+      draftId: null,
     }),
 }));
 
