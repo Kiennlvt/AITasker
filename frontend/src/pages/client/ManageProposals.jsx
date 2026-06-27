@@ -26,8 +26,9 @@ export default function ManageProposals() {
   useEffect(() => {
     getMyJobs()
       .then((data) => {
-        setJobs(data);
-        if (data.length > 0) setSelectedJobId(data[0].id);
+        const activeJobs = data.filter(job => job.status !== 'DRAFT');
+        setJobs(activeJobs);
+        if (activeJobs.length > 0) setSelectedJobId(activeJobs[0].id);
       })
       .catch(() => toast.error("Failed to load jobs"))
       .finally(() => setLoadingJobs(false));
@@ -48,7 +49,8 @@ export default function ManageProposals() {
       await acceptProposal(id);
       // Refetch jobs to get updated status
       const updatedJobs = await getMyJobs();
-      setJobs(updatedJobs);
+      const activeJobs = updatedJobs.filter(job => job.status !== 'DRAFT');
+      setJobs(activeJobs);
       setProposals((prev) =>
         prev.map((p) => (p.id === id ? { ...p, status: "ACCEPTED" } : p))
       );
