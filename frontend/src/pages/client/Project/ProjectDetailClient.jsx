@@ -39,6 +39,10 @@ export default function ProjectDetailClient() {
   const [actionLoading, setActionLoading] = useState(null);
   const [revisionNote, setRevisionNote] = useState({});   // milestoneId → note text
   const [revisionOpen, setRevisionOpen] = useState(null); // milestoneId with open form
+  const [showReviewModal, setShowReviewModal] = useState(false); 
+  const [rating, setRating] = useState(5);                     
+  const [comment, setComment] = useState("");                   
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
     Promise.all([getProjectById(id), getMilestones(id)])
@@ -308,14 +312,103 @@ export default function ProjectDetailClient() {
 
       <MessagesIcon />
 
-      <div>
+      {}
+      <div className="flex items-center gap-4">
         <Link
           to="/projects"
-          className="w-fit flex items-center justify-center gap-1 p-2.5 bg-white border border-gray-200 rounded-xl text-gray-600 hover:text-orange-500 hover:border-orange-200 hover:bg-orange-50/30 transition-all shadow-sm"
+          className="w-fit flex items-center justify-center gap-1 p-2.5 bg-white border border-gray-200 rounded-xl text-gray-600 hover:text-orange-500 hover:border-orange-200 hover:bg-orange-50/30 transition-all shadow-sm text-sm font-semibold"
         >
-          <ArrowLeft size={20} /> Back to projects
+          <ArrowLeft size={18} /> Back to projects
         </Link>
+
+        {}
+        {project.status === "COMPLETE" && (
+          <button
+            onClick={() => setShowReviewModal(true)}
+            className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-bold shadow-md transition-all"
+          >
+            Leave a Review
+          </button>
+        )}
       </div>
+
+      {}
+      {showReviewModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative border border-gray-100">
+            <button 
+              onClick={() => setShowReviewModal(false)} 
+              className="absolute top-5 right-5 text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
+
+            <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500 mx-auto mb-4 font-bold text-xl">
+              ★
+            </div>
+
+            <h3 className="text-xl font-bold text-center text-[#1a1a3c]">Rate your experience</h3>
+            <p className="text-xs text-gray-400 text-center mt-1 mb-6">
+              How was working with <span className="font-semibold text-orange-500">{project.expertName || "the Expert"}</span>?
+            </p>
+
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Share your experience (optional)..."
+              rows={4}
+              className="w-full p-4 border border-gray-200 rounded-2xl text-sm outline-none focus:border-orange-500 transition-all resize-none mb-6"
+            />
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowReviewModal(false)}
+                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-bold rounded-xl"
+              >
+                Skip
+              </button>
+              <button
+                type="button"
+                disabled={submittingReview}
+                onClick={async () => {
+                  setSubmittingReview(true);
+                  try {
+                    const payload = {
+                      projectId: project.id,
+                      expertId: project.expertId,
+                      comment: comment.trim()
+                    };
+                    
+                    
+                    const response = await fetch("http://localhost:8080/api/reviews", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(payload)
+                    });
+
+                    if (response.ok) {
+                      toast.success("Thank you for your review!");
+                      setShowReviewModal(false);
+                      setComment("");
+                    } else {
+                      toast.error("Failed to submit review");
+                    }
+                  } catch (err) {
+                    toast.error("Something went wrong!");
+                  } finally {
+                    setSubmittingReview(false);
+                  }
+                }}
+                className="flex-1 py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-bold rounded-xl shadow-md"
+              >
+                {submittingReview ? "Submitting..." : "Submit Review"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

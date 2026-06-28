@@ -13,7 +13,7 @@ import useAuthStore from "../../store/authStore";
 export default function DashboardExpert() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const [stats, setStats] = useState({ activeProjects: 0, pendingProposals: 0, totalEarnings: 0 });
+  const [stats, setStats] = useState({ activeProjects: 0, pendingProposals: 0, totalEarnings: 0, averageRating: 0 });
   const [proposals, setProposals] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +25,7 @@ export default function DashboardExpert() {
           activeProjects: dash.activeProjects ?? 0,
           pendingProposals: dash.pendingProposals ?? 0,
           totalEarnings: dash.totalEarnings ?? 0,
+          averageRating: dash.averageRating ?? 0,
         });
         setProposals(
           props.slice(0, 4).map((p) => ({
@@ -98,7 +99,7 @@ export default function DashboardExpert() {
     {
       id: "stat-4",
       label: "Average Rating",
-      value: "4.9/5.0",
+      value: loading ? "..." : `${stats.averageRating > 0 ? stats.averageRating : "0"}/5.0`,
       icon: Star,
       iconBgColor: "bg-amber-50",
       iconTextColor: "text-amber-500",

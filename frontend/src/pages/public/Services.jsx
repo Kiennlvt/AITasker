@@ -28,28 +28,18 @@ const SORT_OPTIONS = [
 ];
 
 function toCardShape(svc, index) {
-  const seed = svc.id || index;
   
-  let rawRating = svc.expertRating ?? svc.rating ?? svc.averageRating;
-  if (rawRating === null || rawRating === undefined || isNaN(Number(rawRating)) || Number(rawRating) === 0) {
-    rawRating = 5.0; // Mặc định an toàn
-  }
+  let rawRating = svc.expertRating ?? svc.rating ?? svc.averageRating ?? svc.averageStars;
 
-  // 🌟 THUẬT TOÁN PHÂN PHỐI SỐ SAO TRÒN TRỊA (CHỈ XUẤT HIỆN 4.0 - 4.5 - 5.0)
-  // Vừa sinh dữ liệu chuẩn để test bộ lọc, vừa không lo bị nhóm bắt bẻ mock data cứng
-  if (index % 3 === 0) {
-    rawRating = 4.0;
-  } else if (index % 4 === 0) {
-    rawRating = 4.5;
-  } else {
-    rawRating = 5.0;
+  if (!rawRating || isNaN(Number(rawRating)) || Number(rawRating) === 0) {
+    rawRating = 5.0; 
   }
 
   return {
     id: svc.id,
     title: svc.title || svc.name || "AI Service",
     author: svc.expertName || svc.author || "Unknown Expert",
-    rating: Number(rawRating).toFixed(1), // Định dạng chuẩn 1 chữ số thập phân
+    rating: Number(rawRating).toFixed(1), 
     image: svc.imageUrl || FALLBACK_IMAGE,
     price: typeof svc.price === "number" ? `$${svc.price.toLocaleString()}` : (svc.price || "$2,500"),
     tags: svc.tags && svc.tags.length > 0 ? svc.tags : ["AI Expert"],
@@ -84,14 +74,26 @@ export default function Services() {
 
   useEffect(() => {
     setLoading(true);
-    getServices(page, PAGE_SIZE, sort.value)
-      .then((data) => {
-        setServices(data.content ?? []);
-        setTotalPages(data.totalPages ?? 1);
+
+    const params = {
+    page,
+    size: PAGE_SIZE,
+    sort: sort.value,
+  };
+
+  if (ratingType) {
+    params.rating = ratingType;
+  }
+
+    getServices(page, PAGE_SIZE, sort.value, ratingType) 
+    .then((data) => {
+      setServices(data.content ?? []);
+      setTotalPages(data.totalPages ?? 1);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [page, sort]);
+
+  }, [page, sort, ratingType]);
 
   function handleSort(option) {
     setSort(option);
@@ -118,6 +120,7 @@ export default function Services() {
     // 4. Lọc khoảng số sao đánh giá (Rating) từ SidebarMarketplace đẩy lên
     const cardRatingNum = Number(card.rating);
     let ratingOk = true;
+
     if (ratingType) {
       if (ratingType === "4.0") {
         ratingOk = cardRatingNum >= 4.0 && cardRatingNum < 4.5;
@@ -193,7 +196,7 @@ export default function Services() {
               <ServiceCard key={svc.id} service={svc} />
             ))}
 
-            {/* Chỉ hiện card Featured cố định khi không dùng thanh bộ lọc ô tìm kiếm */}
+            {}
             {!searchTxt && !ratingType && <FeaturedServiceCard />}
 
             {cards.slice(4).map((svc) => (
