@@ -4,7 +4,8 @@ import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
 import { getJobById } from "../../api/jobs";
 import { submitProposal } from "../../api/proposals";
-import { FiClock, FiUsers, FiDollarSign, FiCalendar } from "react-icons/fi";
+import { checkJobSaved, saveJob, unsaveJob } from "../../api/savedJob";
+import { FiClock, FiUsers, FiDollarSign, FiCalendar, FiBookmark } from "react-icons/fi";
 import toast from "react-hot-toast";
 import useAuthStore from "../../store/authStore";
 
@@ -20,6 +21,8 @@ export default function JobDetail() {
   const [days, setDays] = useState("");
   const [cover, setCover] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     getJobById(id)
@@ -27,6 +30,37 @@ export default function JobDetail() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    if (user && id) {
+      checkJobSaved(id)
+        .then(setSaved)
+        .catch(() => {});
+    }
+  }, [user, id]);
+
+  const handleToggleSave = async () => {
+    if (!user) {
+      toast.error("Please log in to save jobs");
+      return;
+    }
+    setSaving(true);
+    try {
+      if (saved) {
+        await unsaveJob(id);
+        setSaved(false);
+        toast.success("Removed from saved jobs");
+      } else {
+        await saveJob(id);
+        setSaved(true);
+        toast.success("Job saved!");
+      }
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleApply = async () => {
     if (!bid || !days || !cover) {
@@ -209,7 +243,20 @@ export default function JobDetail() {
                 Apply Now
               </Button>
             )}
-            <Button className="mt-6 w-full rounded-full py-4 text-base" variant="secondary">Save for later</Button>
+            {user?.role === "EXPERT" && (
+              <button
+                onClick={handleToggleSave}
+                disabled={saving}
+                className={`mt-3 w-full rounded-full py-4 text-base font-bold flex items-center justify-center gap-2 border transition-all ${
+                  saved
+                    ? "bg-orange-50 border-orange-400 text-orange-500 hover:bg-orange-100"
+                    : "bg-white border-slate-200 text-slate-600 hover:border-orange-400 hover:text-orange-500"
+                } disabled:opacity-50`}
+              >
+                <FiBookmark className={saved ? "fill-orange-500" : ""} />
+                {saving ? "..." : saved ? "Saved" : "Save for Later"}
+              </button>
+            )}
             <div className="mt-6 space-y-3 border-t border-slate-100 pt-5 text-xs text-slate-500">
               <p className="flex items-center gap-2">
                 <FiClock /> Posted {new Date(job.createdAt).toLocaleDateString()}
