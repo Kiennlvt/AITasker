@@ -37,6 +37,7 @@ import ManageUsersPage from "./pages/admin/ManageUsersPage";
 import ManageJobsPage from "./pages/admin/ManageJobsPage";
 import StatisticsPage from "./pages/admin/StatisticsPage";
 import SavedServices from "./pages/client/SavedService";
+import SavedJobs from "./pages/expert/SavedJobs";
 
 // Renders ClientLayout or ExpertLayout depending on logged-in user's role
 function MessengerLayout() {
@@ -94,6 +95,7 @@ export default function App() {
             <Route path="/my-proposals" element={<MyProposals />} />
             <Route path="/expert-profile" element={<ProfileExpert />} />
             <Route path="/post-service" element={<PostService />} />
+            <Route path="/saved-jobs" element={<SavedJobs />} />
           </Route>
         </Route>
 
