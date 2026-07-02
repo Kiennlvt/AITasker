@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
@@ -51,6 +51,14 @@ export default function JobDetail() {
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const proposalRef = useRef(null);
+
+  const handleApplyNow = () => {
+    setShowApply(true);
+    setTimeout(() => {
+      proposalRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  };
 
   useEffect(() => {
     getJobById(id)
@@ -191,74 +199,73 @@ export default function JobDetail() {
           {/* Proposal form */}
           {user?.role === "EXPERT" && (
             <Section title="Submit a Proposal">
-              {submitted ? (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 text-center space-y-3">
-                  <div className="text-3xl">🎉</div>
-                  <h3 className="font-bold text-emerald-700">Proposal Submitted!</h3>
-                  <p className="text-sm text-emerald-600">
-                    Your proposal has been sent successfully. The client will review it and get back to you soon.
-                  </p>
-                  <button
-                    onClick={() => navigate("/my-proposals")}
-                    className="mt-2 px-5 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition-all"
-                  >
-                    View My Proposals →
-                  </button>
-                </div>
-              ) : !showApply ? (
-                <div className="space-y-3 rounded-2xl border border-slate-100 bg-white p-6 shadow-[0_10px_25px_rgba(15,23,42,0.05)]">
-                  <Button onClick={() => setShowApply(true)}>Apply for this Job</Button>
-                  <p className="text-xs text-gray-400">
-                    You will need to fill in bid amount, delivery time and a cover letter.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-bold text-gray-500 uppercase">Bid Amount ($)</label>
-                      <input
-                        type="number"
-                        value={bid}
-                        onChange={(e) => setBid(e.target.value)}
-                        className="w-full mt-1 p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-orange-400"
-                        placeholder="e.g. 3000"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-gray-500 uppercase">Delivery (days)</label>
-                      <input
-                        type="number"
-                        value={days}
-                        onChange={(e) => setDays(e.target.value)}
-                        className="w-full mt-1 p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-orange-400"
-                        placeholder="e.g. 30"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase">Cover Letter</label>
-                    <textarea
-                      value={cover}
-                      onChange={(e) => setCover(e.target.value)}
-                      rows={5}
-                      className="w-full mt-1 p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-orange-400 resize-none"
-                      placeholder="Describe your approach, relevant experience, and why you're the right fit..."
-                    />
-                  </div>
-                  <div className="flex gap-3">
-                    <Button onClick={handleApply} disabled={submitting}>
-                      {submitting ? "Submitting..." : "Submit Proposal"}
-                    </Button>
+              <div ref={proposalRef}>
+                {submitted ? (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 text-center space-y-3">
+                    <div className="text-3xl">🎉</div>
+                    <h3 className="font-bold text-emerald-700">Proposal Submitted!</h3>
+                    <p className="text-sm text-emerald-600">
+                      Your proposal has been sent successfully. The client will review it and get back to you soon.
+                    </p>
                     <button
-                      onClick={handleCancel}
-                      className="px-4 py-2 text-sm font-semibold text-gray-500 hover:text-gray-700"
+                      onClick={() => navigate("/my-proposals")}
+                      className="mt-2 px-5 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition-all"
                     >
-                      Cancel
+                      View My Proposals →
                     </button>
                   </div>
-                </div>
-              )}
+                ) : showApply ? (
+                  <div className="space-y-4 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase">Bid Amount ($)</label>
+                        <input
+                          type="number"
+                          value={bid}
+                          onChange={(e) => setBid(e.target.value)}
+                          className="w-full mt-1 p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-orange-400"
+                          placeholder="e.g. 3000"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase">Delivery (days)</label>
+                        <input
+                          type="number"
+                          value={days}
+                          onChange={(e) => setDays(e.target.value)}
+                          className="w-full mt-1 p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-orange-400"
+                          placeholder="e.g. 30"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase">Cover Letter</label>
+                      <textarea
+                        value={cover}
+                        onChange={(e) => setCover(e.target.value)}
+                        rows={5}
+                        className="w-full mt-1 p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-orange-400 resize-none"
+                        placeholder="Describe your approach, relevant experience, and why you're the right fit..."
+                      />
+                    </div>
+                    <div className="flex gap-3">
+                      <Button onClick={handleApply} disabled={submitting}>
+                        {submitting ? "Submitting..." : "Submit Proposal"}
+                      </Button>
+                      <button
+                        onClick={handleCancel}
+                        className="px-4 py-2 text-sm font-semibold text-gray-500 hover:text-gray-700"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400">
+                    Click <span className="font-semibold text-orange-500">Apply Now</span> in the sidebar to submit your proposal.
+                  </p>
+                )}
+              </div>
             </Section>
           )}
         </div>
@@ -274,7 +281,7 @@ export default function JobDetail() {
             <InfoRow label="Proposals" value={`${job.proposalCount ?? 0} received`} icon={<FiUsers />} orange />
 
             {user?.role === "EXPERT" && (
-              <Button className="mt-6 w-full rounded-full py-4 text-base" onClick={() => setShowApply(true)}>
+              <Button className="mt-6 w-full rounded-full py-4 text-base" onClick={handleApplyNow}>
                 Apply Now
               </Button>
             )}
