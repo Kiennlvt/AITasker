@@ -322,7 +322,7 @@ export default function ProjectDetailClient() {
         </Link>
 
         {}
-        {project.status === "COMPLETE" && (
+        {project.status === "COMPLETED" && (
           <button
             onClick={() => setShowReviewModal(true)}
             className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-bold shadow-md transition-all"
@@ -352,6 +352,20 @@ export default function ProjectDetailClient() {
               How was working with <span className="font-semibold text-orange-500">{project.expertName || "the Expert"}</span>?
             </p>
 
+            {/* Star rating selector */}
+            <div className="flex items-center justify-center gap-2 mb-5">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setRating(s)}
+                  className="text-3xl transition-transform hover:scale-110 focus:outline-none"
+                >
+                  <span className={s <= rating ? "text-amber-400" : "text-gray-200"}>★</span>
+                </button>
+              ))}
+            </div>
+
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
@@ -376,7 +390,8 @@ export default function ProjectDetailClient() {
                   try {
                     const payload = {
                       projectId: project.id,
-                      expertId: project.expertId,
+                      receiverId: project.expertId,
+                      rating,
                       comment: comment.trim()
                     };
                     

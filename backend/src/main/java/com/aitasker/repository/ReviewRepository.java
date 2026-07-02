@@ -8,4 +8,5 @@ import org.springframework.stereotype.Repository;
 public interface ReviewRepository extends JpaRepository<Review, String> {
     boolean existsByGiverIdAndProjectId(String giverId, String projectId);
     java.util.List<Review> findByProjectId(String projectId);
+    java.util.List<Review> findByReceiverIdOrderByCreatedAtDesc(String receiverId);
 }
