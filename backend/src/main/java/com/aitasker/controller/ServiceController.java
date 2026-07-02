@@ -40,6 +40,12 @@ public class ServiceController {
         return ApiResponse.ok(toResponse(svc));
     }
 
+    @GetMapping("/expert/{expertId}")
+    public ApiResponse<List<ServiceResponse>> getServicesByExpert(@PathVariable String expertId) {
+        return ApiResponse.ok(serviceRepo.findByExpertIdOrderByCreatedAtDesc(expertId)
+                .stream().filter(s -> s.isActive()).map(this::toResponse).toList());
+    }
+
     @GetMapping("/my-services")
     @PreAuthorize("hasRole('EXPERT')")
     public ApiResponse<List<ServiceResponse>> getMyServices(@AuthenticationPrincipal UserDetails user) {

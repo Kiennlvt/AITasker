@@ -1,5 +1,6 @@
 package com.aitasker.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.aitasker.enums.UserRole;
 import lombok.Builder;
 import lombok.Data;
@@ -17,7 +18,9 @@ public class UserResponse {
     private String location;
     private Double hourlyRate;
     private List<String> skills;
+    @JsonProperty("isVerified")
     private boolean isVerified;
+    @JsonProperty("isActive")
     private boolean isActive;
     private java.time.LocalDateTime createdAt;
 }

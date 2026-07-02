@@ -8,3 +8,6 @@ export const updateMe = (data) =>
 
 export const getUserById = (id) =>
   api.get(`/users/${id}`).then(r => r.data.data);
+
+export const getUserPublicStats = (id) =>
+  api.get(`/users/${id}/stats`).then(r => r.data.data);
