@@ -210,7 +210,10 @@ export default function Messages() {
         }
         if (data.length > 0) setActiveConv(data[0]);
       })
-      .catch(() => toast.error("Không thể tải danh sách hội thoại"))
+      .catch((err) => {
+        console.error("Failed to load conversations:", err);
+        toast.error("Không thể tải danh sách hội thoại");
+      })
       .finally(() => setLoadingConvs(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -222,7 +225,10 @@ export default function Messages() {
     api
       .get(`/messages/conversation/${activeConv.conversationId}`)
       .then((res) => setMessages(res.data?.data ?? []))
-      .catch(() => toast.error("Không thể tải tin nhắn"))
+      .catch((err) => {
+        console.error("Failed to load messages:", err);
+        toast.error("Không thể tải tin nhắn");
+      })
       .finally(() => setLoadingMsgs(false));
   }, [activeConv?.conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -238,7 +244,8 @@ export default function Messages() {
     setSending(true);
     try {
       await api.post("/messages", { conversationId: activeConv.conversationId, content });
-    } catch {
+    } catch (err) {
+      console.error("Failed to send message:", err);
       toast.error("Không thể gửi tin nhắn");
       setInput(content);
     } finally {
