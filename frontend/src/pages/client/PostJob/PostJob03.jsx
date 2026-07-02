@@ -254,16 +254,31 @@ export default function PostJob03() {
     `## Scope of Work\n${scope}\n\n` +
     `## Candidate Expectations\n${expectations}`;
 
+  // A description that is itself a previously-generated PRD (starts with a
+  // markdown heading) must never be fed back in as the "objective" for a new
+  // generation — doing so nests the whole old document inside the new one.
+  const looksGenerated = (s) => /^#{1,3}\s/.test((s || "").trim());
+
+  const extractObjective = (doc) => {
+    const match = (doc || "").match(/##[^\n]*Objective\s*\n([\s\S]*?)(\n##|\n---|$)/i);
+    return match ? match[1].trim() : "";
+  };
+
   // ── AI generation ──
   const handleOptimizeWithAI = async () => {
     setIsGenerating(true);
     try {
+      const seedObjective =
+        objective ||
+        extractObjective(aiContent) ||
+        (looksGenerated(store.description) ? "" : store.description);
+
       const jobData = {
         title: store.title,
         category: store.category,
         timelineAmount: store.timelineAmount,
         timelineUnit: store.timelineUnit,
-        description: objective || store.description,
+        description: seedObjective,
         scope,
         expectations,
         selectedPackage: store.selectedPackage,
@@ -286,7 +301,7 @@ export default function PostJob03() {
         prd = buildDynamicPRD({
           title:        store.title,
           category:     store.category,
-          objective:    objective || store.description,
+          objective:    seedObjective,
           scope,
           expectations,
           pkg:          store.selectedPackage,

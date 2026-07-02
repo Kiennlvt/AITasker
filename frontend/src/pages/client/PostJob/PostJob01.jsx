@@ -95,17 +95,6 @@ export default function PostJob() {
             </p>
           </div>
 
-          <div className="mb-12">
-            <label className="block mb-3 font-semibold text-[#15153d]">
-              Upload sample images or documents.
-            </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-3xl h-[220px] flex flex-col items-center justify-center text-center">
-              <div className="text-5xl mb-4">☁️</div>
-              <h3 className="font-semibold text-lg text-[#15153d]">Upload sample images or documents</h3>
-              <p className="text-gray-400 mt-2">PNG, JPG, PDF (maximum 10MB)</p>
-            </div>
-          </div>
-
           <div className="flex items-center justify-between">
             <Button variant="secondary" type="button" onClick={() => navigate("/marketplace")}>
               Cancel

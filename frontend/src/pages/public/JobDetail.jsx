@@ -2,12 +2,40 @@ import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
+import MarkdownText from "../../components/ui/MarkdownText";
 import { getJobById } from "../../api/jobs";
 import { submitProposal } from "../../api/proposals";
 import { checkJobSaved, saveJob, unsaveJob } from "../../api/savedJob";
 import { FiClock, FiUsers, FiDollarSign, FiCalendar, FiBookmark } from "react-icons/fi";
 import toast from "react-hot-toast";
 import useAuthStore from "../../store/authStore";
+
+// The AI-generated PRD repeats the job title as its own leading heading
+// (e.g. "# Project Overview: <title>"); strip it since the page already
+// shows the title as its H1.
+function stripRedundantHeading(text, title) {
+  if (!text) return text;
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+
+  while (lines.length && lines[0].trim() === "") lines.shift();
+  if (lines[0] && /^#\s+/.test(lines[0].trim())) {
+    lines.shift();
+    while (lines.length && lines[0].trim() === "") lines.shift();
+  }
+  if (lines[0] && /^##\s+/.test(lines[0].trim())) {
+    const headingText = lines[0].trim().replace(/^##\s+/, "").trim();
+    if (title && headingText.toLowerCase() === title.trim().toLowerCase()) {
+      lines.shift();
+      while (lines.length && lines[0].trim() === "") lines.shift();
+    }
+  }
+  if (lines[0] && lines[0].trim() === "---") {
+    lines.shift();
+    while (lines.length && lines[0].trim() === "") lines.shift();
+  }
+
+  return lines.join("\n");
+}
 
 export default function JobDetail() {
   const { id } = useParams();
@@ -133,24 +161,31 @@ export default function JobDetail() {
           </div>
 
           <Section title="Project Description">
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">{job.description}</p>
+            <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-[0_10px_25px_rgba(15,23,42,0.05)]">
+              <MarkdownText
+                text={stripRedundantHeading(job.description, job.title)}
+                className="text-sm leading-relaxed text-slate-600"
+              />
+            </div>
           </Section>
 
           <Section title="Deliverables">
-            <ul className="space-y-3 text-sm leading-relaxed text-slate-600">
-              <li className="flex gap-3">
-                <span className="mt-2 h-1.5 w-1.5 rounded-full bg-orange-500 shrink-0" />
-                Working AI solution matching the described scope.
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-2 h-1.5 w-1.5 rounded-full bg-orange-500 shrink-0" />
-                Technical documentation and deployment guide.
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-2 h-1.5 w-1.5 rounded-full bg-orange-500 shrink-0" />
-                Source code and final handoff package.
-              </li>
-            </ul>
+            <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-[0_10px_25px_rgba(15,23,42,0.05)]">
+              <ul className="space-y-3 text-sm leading-relaxed text-slate-600">
+                <li className="flex gap-3">
+                  <span className="mt-2 h-1.5 w-1.5 rounded-full bg-orange-500 shrink-0" />
+                  Working AI solution matching the described scope.
+                </li>
+                <li className="flex gap-3">
+                  <span className="mt-2 h-1.5 w-1.5 rounded-full bg-orange-500 shrink-0" />
+                  Technical documentation and deployment guide.
+                </li>
+                <li className="flex gap-3">
+                  <span className="mt-2 h-1.5 w-1.5 rounded-full bg-orange-500 shrink-0" />
+                  Source code and final handoff package.
+                </li>
+              </ul>
+            </div>
           </Section>
 
           {/* Proposal form */}
@@ -171,7 +206,7 @@ export default function JobDetail() {
                   </button>
                 </div>
               ) : !showApply ? (
-                <div className="space-y-3">
+                <div className="space-y-3 rounded-2xl border border-slate-100 bg-white p-6 shadow-[0_10px_25px_rgba(15,23,42,0.05)]">
                   <Button onClick={() => setShowApply(true)}>Apply for this Job</Button>
                   <p className="text-xs text-gray-400">
                     You will need to fill in bid amount, delivery time and a cover letter.
