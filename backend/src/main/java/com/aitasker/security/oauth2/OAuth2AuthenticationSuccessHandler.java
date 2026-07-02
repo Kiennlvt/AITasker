@@ -38,6 +38,11 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found after OAuth2 login: " + email));
 
+        if (!user.isActive()) {
+            response.sendRedirect(frontendUrl + "/login?error=account_suspended");
+            return;
+        }
+
         String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getRole().name());
         String refreshToken = jwtUtil.generateRefreshToken(user.getId());
 

@@ -38,6 +38,7 @@ import ManageJobsPage from "./pages/admin/ManageJobsPage";
 import StatisticsPage from "./pages/admin/StatisticsPage";
 import SavedServices from "./pages/client/SavedService";
 import SavedJobs from "./pages/expert/SavedJobs";
+import PublicProfile from "./pages/public/PublicProfile";
 
 // Renders ClientLayout or ExpertLayout depending on logged-in user's role
 function MessengerLayout() {
@@ -59,9 +60,10 @@ export default function App() {
 
         <Route element={<PublicLayout />}>
           <Route path="/marketplace" element={<Marketplace />} />
-<Route path="/jobs/:id" element={<JobDetail />} />
+          <Route path="/jobs/:id" element={<JobDetail />} />
           <Route path="/services" element={<Services />} />
           <Route path="/services/:id" element={<ServiceDetail />} />
+          <Route path="/profile/:id" element={<PublicProfile />} />
         </Route>
 
         {/* Shared /messages route — accessible by both CLIENT and EXPERT */}

@@ -11,3 +11,6 @@ export const getMyServices = () =>
 
 export const createService = (data) =>
   api.post('/services', data).then(r => r.data.data);
+
+export const getServicesByExpert = (expertId) =>
+  api.get(`/services/expert/${expertId}`).then(r => r.data.data);

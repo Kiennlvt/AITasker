@@ -190,7 +190,12 @@ export default function ServiceDetail() {
                 <p className="text-[11px] text-slate-400">{rating} / 5.0 rating</p>
               </div>
             </div>
-            <button className="mt-6 text-xs font-black text-orange-500">View Profile</button>
+            <button
+              onClick={() => navigate(`/profile/${service.expertId}`)}
+              className="mt-6 text-xs font-black text-orange-500 hover:underline"
+            >
+              View Profile
+            </button>
           </div>
         </aside>
       </section>
