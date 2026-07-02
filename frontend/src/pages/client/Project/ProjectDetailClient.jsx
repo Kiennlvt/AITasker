@@ -37,10 +37,10 @@ export default function ProjectDetailClient() {
   const [milestones, setMilestones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
-  const [revisionNote, setRevisionNote] = useState({});   // milestoneId → note text
-  const [revisionOpen, setRevisionOpen] = useState(null); // milestoneId with open form
+  const [revisionNote, setRevisionNote] = useState({});   
+  const [revisionOpen, setRevisionOpen] = useState(null); 
   const [showReviewModal, setShowReviewModal] = useState(false); 
-  const [rating, setRating] = useState(5);                     
+  const [rating, setRating] = useState(0);                     
   const [comment, setComment] = useState("");                   
   const [submittingReview, setSubmittingReview] = useState(false);
 
@@ -135,7 +135,6 @@ export default function ProjectDetailClient() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Milestones */}
         <div className="lg:col-span-2">
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             <h3 className="font-bold text-xs uppercase tracking-wider text-gray-400 mb-8">Milestone Progress</h3>
@@ -182,7 +181,6 @@ export default function ProjectDetailClient() {
                         </p>
                       )}
 
-                      {/* Expert submission details */}
                       {(milestone.status === "SUBMITTED" || milestone.status === "REVISION_REQUESTED") && milestone.deliverableNote && (
                         <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
                           <p className="text-[11px] font-bold text-blue-500 uppercase mb-1">Expert Note</p>
@@ -190,7 +188,6 @@ export default function ProjectDetailClient() {
                         </div>
                       )}
 
-                      {/* Revision note from client */}
                       {milestone.status === "REVISION_REQUESTED" && milestone.revisionNote && (
                         <div className="mt-3 p-3 bg-amber-50 border border-amber-100 rounded-xl">
                           <p className="text-[11px] font-bold text-amber-600 uppercase mb-1">Your Revision Request</p>
@@ -219,7 +216,6 @@ export default function ProjectDetailClient() {
                         </div>
                       )}
 
-                      {/* Client can approve or request revision when milestone is SUBMITTED */}
                       {milestone.status === "SUBMITTED" && (
                         <div className="mt-3 space-y-2">
                           <div className="flex gap-2">
@@ -267,7 +263,6 @@ export default function ProjectDetailClient() {
           </div>
         </div>
 
-        {/* Expert info */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 h-fit">
           <h3 className="font-bold text-xs uppercase tracking-wider text-gray-400 mb-6">Assigned Expert</h3>
           {project.expertName ? (
@@ -312,7 +307,6 @@ export default function ProjectDetailClient() {
 
       <MessagesIcon />
 
-      {}
       <div className="flex items-center gap-4">
         <Link
           to="/projects"
@@ -321,8 +315,7 @@ export default function ProjectDetailClient() {
           <ArrowLeft size={18} /> Back to projects
         </Link>
 
-        {}
-        {project.status === "COMPLETE" && (
+        {project.status === "COMPLETED" && (
           <button
             onClick={() => setShowReviewModal(true)}
             className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-bold shadow-md transition-all"
@@ -332,39 +325,58 @@ export default function ProjectDetailClient() {
         )}
       </div>
 
-      {}
       {showReviewModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative border border-gray-100">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[24px] p-8 max-w-md w-full shadow-xl relative border border-gray-100/50 flex flex-col items-center">
             <button 
               onClick={() => setShowReviewModal(false)} 
-              className="absolute top-5 right-5 text-gray-400 hover:text-gray-600"
+              className="absolute top-5 right-5 text-gray-300 hover:text-gray-500 text-xl font-light"
             >
               ✕
             </button>
 
-            <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500 mx-auto mb-4 font-bold text-xl">
+            <div className="w-16 h-16 bg-[#fff2e6] rounded-[20px] flex items-center justify-center text-[#e07026] mb-5 text-2xl">
               ★
             </div>
 
-            <h3 className="text-xl font-bold text-center text-[#1a1a3c]">Rate your experience</h3>
-            <p className="text-xs text-gray-400 text-center mt-1 mb-6">
-              How was working with <span className="font-semibold text-orange-500">{project.expertName || "the Expert"}</span>?
+            <h3 className="text-[22px] font-bold text-center text-[#181926] tracking-tight">Rate your experience</h3>
+            <p className="text-sm text-gray-400 text-center mt-1.5 mb-7">
+              How was working with <span className="font-semibold text-[#181926]">{project.expertName || "Le Van Expert"}</span>?
             </p>
+
+            <div className="flex justify-center gap-3 mb-7 w-full">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setRating(star)}
+                  className="transition-all transform hover:scale-110 outline-none"
+                >
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    viewBox="0 0 24 24" 
+                    strokeWidth="1.5" 
+                    className={`w-9 h-9 ${star <= rating ? "fill-[#ea8441] stroke-[#ea8441]" : "fill-none stroke-[#d2d4dc]"}`}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499c.151-.326.621-.326.772 0l2.742 5.556 6.13 1.107c.362.065.507.513.23.768l-4.42 4.307 1.043 6.113c.062.365-.32.643-.642.47l-5.46-2.873-5.46 2.873c-.322.172-.704-.105-.642-.47l1.042-6.113-4.42-4.307c-.277-.255-.132-.703.23-.768l6.13-1.107 2.742-5.556z" />
+                  </svg>
+                </button>
+              ))}
+            </div>
 
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Share your experience (optional)..."
               rows={4}
-              className="w-full p-4 border border-gray-200 rounded-2xl text-sm outline-none focus:border-orange-500 transition-all resize-none mb-6"
+              className="w-full p-4 border border-gray-200/80 rounded-[16px] text-sm outline-none focus:border-[#ea8441] placeholder-gray-300 transition-all resize-none mb-7 bg-white"
             />
 
-            <div className="flex gap-3">
+            <div className="flex gap-4 w-full">
               <button
                 type="button"
                 onClick={() => setShowReviewModal(false)}
-                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-bold rounded-xl"
+                className="flex-1 py-3 bg-[#f3f4f6] hover:bg-[#e5e7eb] text-[#6b7280] text-sm font-bold rounded-[14px] transition-colors"
               >
                 Skip
               </button>
@@ -377,9 +389,9 @@ export default function ProjectDetailClient() {
                     const payload = {
                       projectId: project.id,
                       expertId: project.expertId,
+                      rating: rating,
                       comment: comment.trim()
                     };
-                    
                     
                     const response = await fetch("http://localhost:8080/api/reviews", {
                       method: "POST",
@@ -391,6 +403,7 @@ export default function ProjectDetailClient() {
                       toast.success("Thank you for your review!");
                       setShowReviewModal(false);
                       setComment("");
+                      setRating(0);
                     } else {
                       toast.error("Failed to submit review");
                     }
@@ -400,7 +413,7 @@ export default function ProjectDetailClient() {
                     setSubmittingReview(false);
                   }
                 }}
-                className="flex-1 py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-bold rounded-xl shadow-md"
+                className="flex-1 py-3 bg-[#f2ae83] hover:bg-[#ea8441] text-white text-sm font-bold rounded-[14px] shadow-sm transition-all disabled:opacity-50"
               >
                 {submittingReview ? "Submitting..." : "Submit Review"}
               </button>
