@@ -39,9 +39,10 @@ import StatisticsPage from "./pages/admin/StatisticsPage";
 import SavedServices from "./pages/client/SavedService";
 import SavedJobs from "./pages/expert/SavedJobs";
 import PublicProfile from "./pages/public/PublicProfile";
+import SettingsPage from "./pages/public/Settings";
 
 // Renders ClientLayout or ExpertLayout depending on logged-in user's role
-function MessengerLayout() {
+function DynamicLayout() {
   const { user } = useAuthStore();
   if (user?.role === "EXPERT") return <ExpertLayout />;
   return <ClientLayout />;
@@ -66,10 +67,11 @@ export default function App() {
           <Route path="/profile/:id" element={<PublicProfile />} />
         </Route>
 
-        {/* Shared /messages route — accessible by both CLIENT and EXPERT */}
+        {/* Shared routes — accessible by both CLIENT and EXPERT */}
         <Route element={<ProtectedRoute />}>
-          <Route element={<MessengerLayout />}>
+          <Route element={<DynamicLayout />}>
             <Route path="/messages" element={<Messages />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Route>
 

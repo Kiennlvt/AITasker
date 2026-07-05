@@ -11,3 +11,6 @@ export const getUserById = (id) =>
 
 export const getUserPublicStats = (id) =>
   api.get(`/users/${id}/stats`).then(r => r.data.data);
+
+export const changePassword = (data) =>
+  api.post('/users/me/change-password', data).then(r => r.data);

@@ -1,5 +1,6 @@
 package com.aitasker.controller;
 
+import com.aitasker.dto.request.ChangePasswordRequest;
 import com.aitasker.dto.request.UpdateUserRequest;
 import com.aitasker.dto.response.ApiResponse;
 import com.aitasker.dto.response.PublicStatsResponse;
@@ -15,9 +16,11 @@ import com.aitasker.repository.JobPostRepository;
 import com.aitasker.repository.ProjectRepository;
 import com.aitasker.repository.ReviewRepository;
 import com.aitasker.repository.UserRepository;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -31,6 +34,22 @@ public class UserController {
     private final ProjectRepository projectRepo;
     private final JobPostRepository jobPostRepo;
     private final ReviewRepository reviewRepo;
+    private final PasswordEncoder passwordEncoder;
+
+    @PostMapping("/me/change-password")
+    public ApiResponse<Void> changePassword(@AuthenticationPrincipal UserDetails user,
+                                            @Valid @RequestBody ChangePasswordRequest request) {
+        User u = userRepo.findById(user.getUsername())
+                .orElseThrow(() -> AppException.notFound("User not found"));
+
+        if (!passwordEncoder.matches(request.getOldPassword(), u.getPassword())) {
+            throw AppException.badRequest("Incorrect old password");
+        }
+
+        u.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepo.save(u);
+        return ApiResponse.ok("Password changed successfully", null);
+    }
 
     @GetMapping("/me")
     public ApiResponse<UserResponse> getMe(@AuthenticationPrincipal UserDetails user) {
