@@ -7,6 +7,7 @@ import com.aitasker.enums.*;
 import com.aitasker.exception.AppException;
 import com.aitasker.repository.*;
 import com.aitasker.service.ConversationService;
+import com.aitasker.service.NotificationService;
 import com.aitasker.service.ProposalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ public class ProposalServiceImpl implements ProposalService {
     private final UserRepository userRepo;
     private final ProjectRepository projectRepo;
     private final ConversationService conversationService;
+    private final NotificationService notificationService;
 
     @Override
     public ProposalResponse submitProposal(String expertId, SubmitProposalRequest request) {
@@ -47,7 +49,15 @@ public class ProposalServiceImpl implements ProposalService {
                 .deliveryTime(request.getDeliveryTime())
                 .build();
 
-        return toResponse(proposalRepo.save(proposal));
+        Proposal saved = proposalRepo.save(proposal);
+        notificationService.createNotification(
+                job.getClient(),
+                "New Proposal Received",
+                expert.getFullName() + " has submitted a proposal for your job '" + job.getTitle() + "'.",
+                "PROPOSAL",
+                job.getId()
+        );
+        return toResponse(saved);
     }
 
     @Override
@@ -100,6 +110,14 @@ public class ProposalServiceImpl implements ProposalService {
                 .filter(p -> p.getStatus() == ProposalStatus.PENDING && !p.getId().equals(proposalId))
                 .forEach(p -> { p.setStatus(ProposalStatus.REJECTED); proposalRepo.save(p); });
 
+        notificationService.createNotification(
+                proposal.getExpert(),
+                "Proposal Accepted! 🎉",
+                "Your proposal for '" + job.getTitle() + "' has been accepted.",
+                "PROPOSAL",
+                project.getId()
+        );
+
         return toResponse(proposal);
     }
 
@@ -107,7 +125,15 @@ public class ProposalServiceImpl implements ProposalService {
     public ProposalResponse rejectProposal(String clientId, String proposalId) {
         Proposal proposal = getProposalAndCheckClient(clientId, proposalId);
         proposal.setStatus(ProposalStatus.REJECTED);
-        return toResponse(proposalRepo.save(proposal));
+        Proposal saved = proposalRepo.save(proposal);
+        notificationService.createNotification(
+                proposal.getExpert(),
+                "Proposal Rejected",
+                "Your proposal for '" + proposal.getJob().getTitle() + "' was not accepted.",
+                "PROPOSAL",
+                proposal.getJob().getId()
+        );
+        return toResponse(saved);
     }
 
     @Override
@@ -119,7 +145,15 @@ public class ProposalServiceImpl implements ProposalService {
         if (proposal.getStatus() != ProposalStatus.PENDING)
             throw AppException.badRequest("Only pending proposals can be withdrawn");
         proposal.setStatus(ProposalStatus.WITHDRAWN);
-        return toResponse(proposalRepo.save(proposal));
+        Proposal saved = proposalRepo.save(proposal);
+        notificationService.createNotification(
+                proposal.getJob().getClient(),
+                "Proposal Withdrawn",
+                proposal.getExpert().getFullName() + " has withdrawn their proposal for '" + proposal.getJob().getTitle() + "'.",
+                "PROPOSAL",
+                proposal.getJob().getId()
+        );
+        return toResponse(saved);
     }
 
     @Override

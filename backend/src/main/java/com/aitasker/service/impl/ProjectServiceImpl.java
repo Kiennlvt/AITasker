@@ -8,6 +8,7 @@ import com.aitasker.enums.*;
 import com.aitasker.exception.AppException;
 import com.aitasker.repository.*;
 import com.aitasker.service.FileUploadService;
+import com.aitasker.service.NotificationService;
 import com.aitasker.service.ProjectService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final MilestoneRepository milestoneRepo;
     private final UserRepository userRepo;
     private final FileUploadService fileUploadService;
+    private final NotificationService notificationService;
 
     @Override
     public List<ProjectResponse> getMyProjects(String userId) {
@@ -57,6 +59,15 @@ public class ProjectServiceImpl implements ProjectService {
 
         ms.setStatus(MilestoneStatus.APPROVED);
         milestoneRepo.save(ms);
+
+        notificationService.createNotification(
+                ms.getProject().getExpert(),
+                "Milestone Approved! 💰",
+                "Your submission for milestone '" + ms.getTitle() + "' has been approved.",
+                "MILESTONE",
+                ms.getProject().getId()
+        );
+
         return toResponse(ms.getProject());
     }
 
@@ -78,6 +89,15 @@ public class ProjectServiceImpl implements ProjectService {
 
         project.setStatus(ProjectStatus.COMPLETED);
         projectRepo.save(project);
+
+        notificationService.createNotification(
+                project.getExpert(),
+                "Project Completed! 🏆",
+                "Project '" + project.getJob().getTitle() + "' has been marked as completed. Thank you for your work!",
+                "PROJECT",
+                project.getId()
+        );
+
         return toResponse(project);
     }
 
@@ -92,6 +112,15 @@ public class ProjectServiceImpl implements ProjectService {
         ms.setStatus(MilestoneStatus.REVISION_REQUESTED);
         ms.setRevisionNote(note);
         milestoneRepo.save(ms);
+
+        notificationService.createNotification(
+                ms.getProject().getExpert(),
+                "Revision Requested ⚠️",
+                "The client requested revision for milestone '" + ms.getTitle() + "'. Note: " + note,
+                "MILESTONE",
+                ms.getProject().getId()
+        );
+
         return toResponse(ms.getProject());
     }
 
@@ -104,6 +133,15 @@ public class ProjectServiceImpl implements ProjectService {
         ms.setStatus(MilestoneStatus.SUBMITTED);
         ms.setDeliverableNote(note);
         milestoneRepo.save(ms);
+
+        notificationService.createNotification(
+                ms.getProject().getClient(),
+                "Milestone Submitted for Approval",
+                ms.getProject().getExpert().getFullName() + " submitted deliverables for '" + ms.getTitle() + "'.",
+                "MILESTONE",
+                ms.getProject().getId()
+        );
+
         return toResponse(ms.getProject());
     }
 
