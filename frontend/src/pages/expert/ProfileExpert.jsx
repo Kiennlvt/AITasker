@@ -129,17 +129,12 @@ export default function ProfileExpert() {
                       Save Profile
                     </button>
                   ) : (
-                    <>
-                      <button className="flex-1 sm:flex-none h-9 px-4 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-1.5">
-                        <MessageSquare size={14} /> Message
-                      </button>
-                      <button
-                        onClick={() => setIsEdit(true)}
-                        className="flex-1 sm:flex-none h-9 px-4 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-1.5"
-                      >
-                        <Pencil size={14} /> Edit
-                      </button>
-                    </>
+                    <button
+                      onClick={() => setIsEdit(true)}
+                      className="flex-1 sm:flex-none h-9 px-4 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-1.5"
+                    >
+                      <Pencil size={14} /> Edit
+                    </button>
                   )}
                 </div>
               </div>
@@ -325,9 +320,6 @@ export default function ProfileExpert() {
                 </div>
               </>
             )}
-            <button className="w-full h-11 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl shadow-md transition-all">
-              Schedule Consultation
-            </button>
           </div>
         </div>
       </div>

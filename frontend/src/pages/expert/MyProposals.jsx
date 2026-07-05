@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, Clock, CheckCircle, XCircle, ArrowUpRight, Briefcase, RotateCcw } from "lucide-react";
-import { getMyProposals } from "../../api/proposals";
+import { FileText, Clock, CheckCircle, XCircle, ArrowUpRight, Briefcase, RotateCcw, MessageCircle } from "lucide-react";
+import { getMyProposals, withdrawProposal } from "../../api/proposals";
+import { findOrCreateDirect } from "../../api/conversations";
 import toast from "react-hot-toast";
 
 const STATUS_CONFIG = {
@@ -32,6 +33,8 @@ export default function MyProposals() {
   const [proposals, setProposals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("ALL");
+  const [withdrawing, setWithdrawing] = useState(null);
+  const [messaging, setMessaging] = useState(null);
 
   useEffect(() => {
     getMyProposals()
@@ -39,6 +42,34 @@ export default function MyProposals() {
       .catch(() => toast.error("Failed to load proposals"))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleWithdraw = async (proposalId) => {
+    if (!window.confirm("Are you sure you want to withdraw this proposal?")) return;
+    setWithdrawing(proposalId);
+    try {
+      await withdrawProposal(proposalId);
+      setProposals((prev) =>
+        prev.map((p) => (p.id === proposalId ? { ...p, status: "WITHDRAWN" } : p))
+      );
+      toast.success("Proposal withdrawn.");
+    } catch {
+      toast.error("Failed to withdraw proposal");
+    } finally {
+      setWithdrawing(null);
+    }
+  };
+
+  const handleMessageClient = async (clientId, proposalId) => {
+    setMessaging(proposalId);
+    try {
+      const result = await findOrCreateDirect(clientId);
+      navigate(`/messages?conversationId=${result.conversationId}`);
+    } catch {
+      toast.error("Could not open conversation");
+    } finally {
+      setMessaging(null);
+    }
+  };
 
   const FILTER_TABS = [
     { key: "ALL", label: "All" },
@@ -179,39 +210,67 @@ export default function MyProposals() {
               {/* Cover letter preview */}
               {proposal.coverLetter && (
                 <p className="mt-3 text-xs text-gray-500 italic leading-relaxed border-l-2 border-orange-100 pl-3 line-clamp-2">
-                  "{proposal.coverLetter}"
+                  &ldquo;{proposal.coverLetter}&rdquo;
                 </p>
               )}
 
               {/* Footer */}
-              <div className="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between">
-                {proposal.status === "ACCEPTED" && (
-                  <span className="text-xs font-bold text-emerald-600">
-                    🎉 The client has accepted your proposal!
-                  </span>
-                )}
-                {proposal.status === "REJECTED" && (
-                  <span className="text-xs text-rose-400">
-                    Your proposal was not selected this time.
-                  </span>
-                )}
-                {proposal.status === "PENDING" && (
-                  <span className="text-xs text-blue-400">
-                    Waiting for the client to review...
-                  </span>
-                )}
-                {proposal.status === "WITHDRAWN" && (
-                  <span className="text-xs text-gray-400">
-                    You have withdrawn this proposal.
-                  </span>
-                )}
+              <div className="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between gap-2 flex-wrap">
+                <div>
+                  {proposal.status === "ACCEPTED" && (
+                    <span className="text-xs font-bold text-emerald-600">
+                      🎉 The client has accepted your proposal!
+                    </span>
+                  )}
+                  {proposal.status === "REJECTED" && (
+                    <span className="text-xs text-rose-400">
+                      Your proposal was not selected this time.
+                    </span>
+                  )}
+                  {proposal.status === "PENDING" && (
+                    <span className="text-xs text-blue-400">
+                      Waiting for the client to review...
+                    </span>
+                  )}
+                  {proposal.status === "WITHDRAWN" && (
+                    <span className="text-xs text-gray-400">
+                      You have withdrawn this proposal.
+                    </span>
+                  )}
+                </div>
 
-                <button
-                  onClick={() => navigate(`/jobs/${proposal.jobId}`)}
-                  className="flex items-center gap-1 text-xs font-bold text-gray-400 hover:text-orange-500 transition-colors ml-auto"
-                >
-                  View job <ArrowUpRight size={13} />
-                </button>
+                <div className="flex items-center gap-2 ml-auto">
+                  {/* Withdraw button for PENDING proposals */}
+                  {proposal.status === "PENDING" && (
+                    <button
+                      onClick={() => handleWithdraw(proposal.id)}
+                      disabled={withdrawing === proposal.id}
+                      className="flex items-center gap-1 text-xs font-bold text-rose-400 hover:text-rose-600 transition-colors disabled:opacity-50"
+                    >
+                      <RotateCcw size={12} />
+                      {withdrawing === proposal.id ? "Withdrawing..." : "Withdraw"}
+                    </button>
+                  )}
+
+                  {/* Message Client button for ACCEPTED proposals */}
+                  {proposal.status === "ACCEPTED" && proposal.clientId && (
+                    <button
+                      onClick={() => handleMessageClient(proposal.clientId, proposal.id)}
+                      disabled={messaging === proposal.id}
+                      className="flex items-center gap-1 text-xs font-bold text-orange-500 hover:text-orange-700 transition-colors disabled:opacity-50"
+                    >
+                      <MessageCircle size={12} />
+                      {messaging === proposal.id ? "Opening..." : "Message Client"}
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => navigate(`/jobs/${proposal.jobId}`)}
+                    className="flex items-center gap-1 text-xs font-bold text-gray-400 hover:text-orange-500 transition-colors"
+                  >
+                    View job <ArrowUpRight size={13} />
+                  </button>
+                </div>
               </div>
             </div>
           );

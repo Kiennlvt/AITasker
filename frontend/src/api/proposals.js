@@ -14,3 +14,6 @@ export const rejectProposal = (id) =>
 
 export const submitProposal = (data) =>
   api.post('/proposals', data).then(r => r.data.data);
+
+export const withdrawProposal = (id) =>
+  api.patch(`/proposals/${id}/withdraw`).then(r => r.data.data);
