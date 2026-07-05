@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Clock, UploadCloud, Info, ArrowLeft, ChevronRight, Briefcase, X, FileText, RefreshCw, Plus } from "lucide-react";
+import { CheckCircle2, Clock, UploadCloud, Info, ArrowLeft, ChevronRight, Briefcase, X, FileText, RefreshCw, Plus, Star } from "lucide-react";
 import { getMyProjects, getMilestones, submitMilestone, uploadMilestoneFiles, createMilestone } from "../../api/projects";
+import { createReview, hasReviewed } from "../../api/reviews";
 import toast from "react-hot-toast";
 
 function milestoneUi(status) {
@@ -31,6 +32,10 @@ export default function MyTask() {
   const [showAddMilestone, setShowAddMilestone] = useState(false);
   const [creatingMilestone, setCreatingMilestone] = useState(false);
   const [newMilestone, setNewMilestone] = useState({ title: "", description: "", amount: "", dueDate: "" });
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [alreadyReviewed, setAlreadyReviewed] = useState(false);
   const fileInputRef = useRef(null);
   const pollingRef = useRef(null);
 
@@ -59,15 +64,47 @@ export default function MyTask() {
   const handleSelectProject = (project) => {
     setSelectedProject(project);
     setMilestonesLoading(true);
+    setAlreadyReviewed(false);
     getMilestones(project.id)
       .then(setMilestones)
       .catch(() => toast.error("Failed to load milestones"))
       .finally(() => setMilestonesLoading(false));
+    // Check if expert already reviewed this project
+    if (project.status === "COMPLETED") {
+      hasReviewed(project.id)
+        .then(setAlreadyReviewed)
+        .catch(() => {});
+    }
   };
 
   const handleBack = () => {
     setSelectedProject(null);
     setMilestones([]);
+    setReviewRating(0);
+    setReviewComment("");
+    setAlreadyReviewed(false);
+  };
+
+  const handleSubmitReview = async () => {
+    if (reviewRating === 0) {
+      toast.error("Please select a rating");
+      return;
+    }
+    setSubmittingReview(true);
+    try {
+      await createReview({
+        projectId: selectedProject.id,
+        receiverId: selectedProject.clientId,
+        rating: reviewRating,
+        comment: reviewComment.trim() || null,
+      });
+      toast.success("Review submitted! Thank you.");
+      setAlreadyReviewed(true);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to submit review");
+    } finally {
+      setSubmittingReview(false);
+    }
   };
 
   const handleRefreshMilestones = () => {
@@ -565,12 +602,66 @@ export default function MyTask() {
               <div>
                 <p className="text-sm font-bold text-orange-900">Need help?</p>
                 <p className="text-xs text-orange-700 mt-1 leading-relaxed">
-                  Dispute resolution & help desk are available 24/7.
+                  Dispute resolution &amp; help desk are available 24/7.
                 </p>
                 <button className="mt-3 text-xs font-bold text-orange-600 underline">Contact Case Manager</button>
               </div>
             </div>
           </div>
+
+          {/* REVIEW SECTION — only shown for COMPLETED projects */}
+          {selectedProject?.status === "COMPLETED" && (
+            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+              <h3 className="font-bold text-[#15153d] mb-4 flex items-center gap-2">
+                <Star size={16} className="text-amber-400" />
+                Rate Your Client
+              </h3>
+              {alreadyReviewed ? (
+                <div className="text-center py-4 text-sm text-emerald-600 font-semibold">
+                  ✅ You have already reviewed this project.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Star rating */}
+                  <div>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Rating</p>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          onClick={() => setReviewRating(star)}
+                          className="transition-transform hover:scale-110"
+                        >
+                          <Star
+                            size={28}
+                            className={star <= reviewRating ? "text-amber-400 fill-amber-400" : "text-gray-300"}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Comment */}
+                  <div>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Comment (optional)</p>
+                    <textarea
+                      value={reviewComment}
+                      onChange={(e) => setReviewComment(e.target.value)}
+                      rows={3}
+                      placeholder="Share your experience working with this client..."
+                      className="w-full p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-orange-400 resize-none"
+                    />
+                  </div>
+                  <button
+                    onClick={handleSubmitReview}
+                    disabled={submittingReview || reviewRating === 0}
+                    className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submittingReview ? "Submitting..." : "Submit Review"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
