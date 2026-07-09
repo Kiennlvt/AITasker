@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import api from "../../api/client";
 import useAuthStore from "../../store/authStore";
+import { timeAgo } from "../../utils/timeAgo";
 
 function formatTime(ts) {
   if (!ts) return "";
@@ -110,6 +111,7 @@ export default function Messages() {
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [sending, setSending] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
+  const [, forceTick] = useState(0);
 
   const stompRef = useRef(null);
   const subscriptionRef = useRef(null);
@@ -163,6 +165,12 @@ export default function Messages() {
       } catch (_) {}
     });
   };
+
+  // Keep "time ago" labels fresh
+  useEffect(() => {
+    const interval = setInterval(() => forceTick((t) => t + 1), 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // WebSocket: connect once, reconnect automatically
   useEffect(() => {
@@ -311,7 +319,7 @@ export default function Messages() {
                         {conv.otherPartyName}
                       </h4>
                       <span className="text-[10px] text-gray-400 font-medium shrink-0 ml-2">
-                        {formatTime(conv.lastMessageTime)}
+                        {timeAgo(conv.lastMessageTime)}
                       </span>
                     </div>
                     <p className="text-xs text-gray-400 truncate leading-relaxed">

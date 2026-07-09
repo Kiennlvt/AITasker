@@ -4,6 +4,7 @@ import { User, LogOut, ChevronDown, Plus, Bell, Settings, Circle, Check } from "
 import useAuthStore from "../../store/authStore";
 import SearchBar from "./SearchBar"; // 🌟 Nhớ import SearchBar xịn vào đây
 import { getMyNotifications, getUnreadNotificationsCount, markNotificationAsRead, markAllNotificationsAsRead } from "../../api/notifications";
+import { timeAgo } from "../../utils/timeAgo";
 import toast from "react-hot-toast";
 
 export default function Header() {
@@ -78,6 +79,8 @@ export default function Header() {
         } else {
           navigate("/my-tasks");
         }
+      } else if (notif.type === "MESSAGE") {
+        navigate(`/messages?conversationId=${notif.relatedId || ""}`);
       }
     } catch (err) {
       console.error(err);
@@ -174,7 +177,7 @@ export default function Header() {
                         <p className={`text-xs font-bold text-[#15153d] ${!n.isRead ? "font-black text-orange-600" : ""}`}>{n.title}</p>
                         <p className="text-[11px] text-gray-500 mt-0.5 leading-snug line-clamp-2">{n.content}</p>
                         <span className="text-[9px] text-gray-400 mt-1 block">
-                          {new Date(n.createdAt).toLocaleDateString()}
+                          {timeAgo(n.createdAt)}
                         </span>
                       </div>
                     </button>
