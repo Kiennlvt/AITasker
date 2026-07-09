@@ -20,6 +20,13 @@ const useAuthStore = create((set) => ({
     set({ token: data.accessToken, user: { id: data.id, email: data.email, fullName: data.fullName, role: data.role, avatarUrl: data.avatarUrl } });
   },
 
+  setUser: (userData) => {
+    const currentUser = JSON.parse(localStorage.getItem('user')) || {};
+    const updatedUser = { ...currentUser, ...userData };
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    set({ user: updatedUser });
+  },
+
   logout: () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('user');
