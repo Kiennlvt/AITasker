@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { SlidersHorizontal, ArrowUpDown, Star, Sparkles, ArrowRight } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { SlidersHorizontal, ArrowUpDown, Star, Sparkles, ArrowRight, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import MessagesIcon from "../../components/ui/MesageIcon";
 import Button from "../../components/ui/Button";
@@ -10,6 +10,21 @@ import toast from "react-hot-toast";
 
 import usePostJobStore from "../../store/postJobStore";
 
+const FILTER_OPTIONS = [
+  { value: "ALL", label: "All statuses" },
+  { value: "PENDING", label: "Pending" },
+  { value: "ACCEPTED", label: "Accepted" },
+  { value: "REJECTED", label: "Rejected" },
+];
+
+const SORT_OPTIONS = [
+  { value: "NEWEST", label: "Newest first" },
+  { value: "PRICE_LOW", label: "Price: Low to High" },
+  { value: "PRICE_HIGH", label: "Price: High to Low" },
+  { value: "DELIVERY_FAST", label: "Delivery: Fastest" },
+  { value: "RATING_HIGH", label: "Rating: Highest" },
+];
+
 export default function ManageProposals() {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
@@ -19,6 +34,21 @@ export default function ManageProposals() {
   const [loadingProposals, setLoadingProposals] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
   const [messageLoading, setMessageLoading] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [sortBy, setSortBy] = useState("NEWEST");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
+  const filterRef = useRef(null);
+  const sortRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (filterRef.current && !filterRef.current.contains(e.target)) setFilterOpen(false);
+      if (sortRef.current && !sortRef.current.contains(e.target)) setSortOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Store actions
   const loadDraft = usePostJobStore((state) => state.loadDraft);
@@ -123,6 +153,24 @@ export default function ManageProposals() {
     }
   };
 
+  const displayedProposals = [...proposals]
+    .filter((p) => statusFilter === "ALL" || p.status === statusFilter)
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "PRICE_LOW":
+          return (a.bidAmount ?? 0) - (b.bidAmount ?? 0);
+        case "PRICE_HIGH":
+          return (b.bidAmount ?? 0) - (a.bidAmount ?? 0);
+        case "DELIVERY_FAST":
+          return (a.deliveryTime ?? Infinity) - (b.deliveryTime ?? Infinity);
+        case "RATING_HIGH":
+          return (b.expertRating ?? 0) - (a.expertRating ?? 0);
+        case "NEWEST":
+        default:
+          return new Date(b.createdAt ?? 0) - new Date(a.createdAt ?? 0);
+      }
+    });
+
   const statusBadge = (status) => {
     if (status === "ACCEPTED") return "bg-emerald-50 text-emerald-600 border border-emerald-200";
     if (status === "REJECTED") return "bg-rose-50 text-rose-600 border border-rose-200";
@@ -214,22 +262,79 @@ export default function ManageProposals() {
         <div className="lg:col-span-2 space-y-5">
           <div className="flex justify-between items-center">
             <h3 className="font-bold text-lg text-[#1a1a3c]">
-              Proposals ({proposals.length})
+              Proposals ({displayedProposals.length})
             </h3>
             <div className="flex items-center gap-2">
-              <Button variant="third" leftIcon={<SlidersHorizontal size={14} />}>Filter</Button>
-              <Button variant="third" leftIcon={<ArrowUpDown size={14} />}>Sort</Button>
+              <div className="relative" ref={filterRef}>
+                <Button
+                  variant="third"
+                  leftIcon={<SlidersHorizontal size={14} />}
+                  onClick={() => {
+                    setFilterOpen((v) => !v);
+                    setSortOpen(false);
+                  }}
+                >
+                  Filter{statusFilter !== "ALL" ? ` · ${FILTER_OPTIONS.find((o) => o.value === statusFilter)?.label}` : ""}
+                </Button>
+                {filterOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-lg py-1.5 z-10">
+                    {FILTER_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => {
+                          setStatusFilter(option.value);
+                          setFilterOpen(false);
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                      >
+                        {option.label}
+                        {statusFilter === option.value && <Check size={14} className="text-orange-500" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="relative" ref={sortRef}>
+                <Button
+                  variant="third"
+                  leftIcon={<ArrowUpDown size={14} />}
+                  onClick={() => {
+                    setSortOpen((v) => !v);
+                    setFilterOpen(false);
+                  }}
+                >
+                  Sort
+                </Button>
+                {sortOpen && (
+                  <div className="absolute right-0 mt-2 w-52 bg-white border border-gray-100 rounded-xl shadow-lg py-1.5 z-10">
+                    {SORT_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => {
+                          setSortBy(option.value);
+                          setSortOpen(false);
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                      >
+                        {option.label}
+                        {sortBy === option.value && <Check size={14} className="text-orange-500" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
           {loadingProposals && (
             <p className="text-sm text-gray-400 py-4">Loading proposals...</p>
           )}
-          {!loadingProposals && proposals.length === 0 && (
-            <p className="text-sm text-gray-400 py-4">No proposals for this job yet.</p>
+          {!loadingProposals && displayedProposals.length === 0 && (
+            <p className="text-sm text-gray-400 py-4">No proposals match the current filter.</p>
           )}
 
-          {proposals.map((proposal) => (
+          {displayedProposals.map((proposal) => (
             <div
               key={proposal.id}
               className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm space-y-4 hover:shadow-md transition-all relative"

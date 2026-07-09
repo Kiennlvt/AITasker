@@ -33,9 +33,17 @@ function statusStyle(status) {
   }
 }
 
+const STATUS_FILTERS = [
+  { value: "ALL", label: "All" },
+  { value: "ACTIVE", label: "In Progress" },
+  { value: "COMPLETED", label: "Completed" },
+  { value: "CANCELLED", label: "Cancelled" },
+];
+
 export default function ProjectClient() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState("ALL");
 
   useEffect(() => {
     getMyProjects()
@@ -44,6 +52,11 @@ export default function ProjectClient() {
       .finally(() => setLoading(false));
   }, []);
 
+  const filteredProjects =
+    statusFilter === "ALL"
+      ? projects
+      : projects.filter((project) => project.status === statusFilter);
+
   return (
     <div className="space-y-8 max-w-[1400px] mx-auto pb-12">
       <div>
@@ -51,16 +64,33 @@ export default function ProjectClient() {
         <p className="text-gray-500 mt-1">Select a workspace to monitor technical execution and milestones.</p>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        {STATUS_FILTERS.map((filter) => (
+          <button
+            key={filter.value}
+            type="button"
+            onClick={() => setStatusFilter(filter.value)}
+            className={`px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
+              statusFilter === filter.value
+                ? "bg-orange-500 text-white border-orange-500"
+                : "bg-white text-gray-500 border-gray-200 hover:border-orange-300 hover:text-orange-500"
+            }`}
+          >
+            {filter.label}
+          </button>
+        ))}
+      </div>
+
       {loading && (
         <p className="text-sm text-gray-400">Loading projects...</p>
       )}
 
-      {!loading && projects.length === 0 && (
+      {!loading && filteredProjects.length === 0 && (
         <p className="text-sm text-gray-400">No projects found.</p>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {projects.map((project) => {
+        {filteredProjects.map((project) => {
           const s = statusStyle(project.status);
           return (
             <div
