@@ -16,11 +16,10 @@ export default function ProfileExpert() {
   const [skillInput, setSkillInput] = useState("");
 
   useEffect(() => {
-    Promise.all([getMe(), getMyProjects(), getExpertDashboard()])
-      .then(([me, myProjects, dashboard]) => {
+    const load = async () => {
+      try {
+        const me = await getMe();
         setProfile(me);
-        setCompletedProjects(myProjects.filter(p => p.status === "COMPLETED"));
-        setStats(dashboard);
         setForm({
           bio: me.bio || "",
           location: me.location || "",
@@ -28,9 +27,31 @@ export default function ProfileExpert() {
           skills: me.skills || [],
         });
         if (!me.bio) setIsEdit(true);
-      })
-      .catch(() => toast.error("Failed to load profile"))
-      .finally(() => setLoading(false));
+      } catch {
+        toast.error("Failed to load profile");
+        setLoading(false);
+        return;
+      }
+
+      // Load projects — non-critical, won't crash page if fails
+      try {
+        const myProjects = await getMyProjects();
+        setCompletedProjects(myProjects.filter(p => p.status === "COMPLETED"));
+      } catch {
+        // silent fail — projects section stays empty
+      }
+
+      // Load dashboard stats — non-critical
+      try {
+        const dashboard = await getExpertDashboard();
+        setStats(dashboard);
+      } catch {
+        // silent fail — stats section shows 0
+      }
+
+      setLoading(false);
+    };
+    load();
   }, []);
 
   const handleChange = (field) => (e) => setForm(f => ({ ...f, [field]: e.target.value }));
