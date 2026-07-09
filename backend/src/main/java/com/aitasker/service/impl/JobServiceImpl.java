@@ -10,12 +10,14 @@ import com.aitasker.enums.ProposalStatus;
 import com.aitasker.exception.AppException;
 import com.aitasker.repository.JobPostRepository;
 import com.aitasker.repository.ProposalRepository;
+import com.aitasker.repository.SavedJobRepository;
 import com.aitasker.repository.UserRepository;
 import com.aitasker.service.JobService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -28,6 +30,7 @@ public class JobServiceImpl implements JobService {
     private final JobPostRepository jobRepo;
     private final UserRepository userRepo;
     private final ProposalRepository proposalRepo;
+    private final SavedJobRepository savedJobRepo;
 
     @Override
     public Page<JobResponse> getAllOpenJobs(Pageable pageable) {
@@ -86,6 +89,7 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
+    @Transactional
     public void deleteJob(String clientId, String jobId) {
         JobPost job = jobRepo.findById(jobId)
                 .orElseThrow(() -> AppException.notFound("Job not found"));
@@ -93,6 +97,11 @@ public class JobServiceImpl implements JobService {
         if (!job.getClient().getId().equals(clientId))
             throw AppException.forbidden("Not your job");
 
+        if (proposalRepo.existsByJobIdAndStatus(jobId, ProposalStatus.ACCEPTED))
+            throw AppException.badRequest("Cannot delete job with accepted proposal");
+
+        savedJobRepo.deleteByJobId(jobId);
+        proposalRepo.deleteByJobId(jobId);
         jobRepo.delete(job);
     }
 
