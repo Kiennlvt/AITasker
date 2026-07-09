@@ -1,6 +1,7 @@
 package com.aitasker.controller;
 
 import com.aitasker.dto.response.*;
+import com.aitasker.entity.Review;
 import com.aitasker.enums.*;
 import com.aitasker.repository.*;
 import com.aitasker.service.ProjectService;
@@ -9,6 +10,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/dashboard")
@@ -19,6 +22,7 @@ public class DashboardController {
     private final JobPostRepository jobRepo;
     private final ProposalRepository proposalRepo;
     private final ProjectService projectService;
+    private final ReviewRepository reviewRepo;
 
     @GetMapping("/client")
     @PreAuthorize("hasRole('CLIENT')")
@@ -37,10 +41,19 @@ public class DashboardController {
     @PreAuthorize("hasRole('EXPERT')")
     public ApiResponse<DashboardExpertResponse> expertDashboard(@AuthenticationPrincipal UserDetails user) {
         String uid = user.getUsername();
+
+        List<Review> reviews = reviewRepo.findByReceiverIdOrderByCreatedAtDesc(uid);
+        double averageRating = reviews.stream()
+                .mapToInt(Review::getRating)
+                .average()
+                .orElse(0.0);
+
         DashboardExpertResponse response = DashboardExpertResponse.builder()
                 .activeProjects(projectRepo.countByExpertIdAndStatus(uid, ProjectStatus.ACTIVE))
                 .pendingProposals(proposalRepo.countByExpertIdAndStatus(uid, ProposalStatus.PENDING))
                 .totalEarnings(0.0) // TODO: sum from payments
+                .averageRating(reviews.isEmpty() ? null : averageRating)
+                .reviewCount(reviews.size())
                 .recentProjects(projectService.getMyProjects(uid).stream().limit(5).toList())
                 .build();
         return ApiResponse.ok(response);
