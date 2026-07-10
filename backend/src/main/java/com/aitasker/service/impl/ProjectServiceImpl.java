@@ -202,7 +202,7 @@ public class ProjectServiceImpl implements ProjectService {
             throw AppException.badRequest("Due date must be later than the previous milestone's due date");
 
         double existingTotal = others.stream().mapToDouble(m -> m.getAmount() != null ? m.getAmount() : 0).sum();
-        double budget = project.getJob().getBudget();
+        double budget = project.getBudget();
         if (existingTotal + request.getAmount() > budget)
             throw AppException.badRequest("Total milestone amount cannot exceed the project budget");
     }
@@ -237,7 +237,7 @@ public class ProjectServiceImpl implements ProjectService {
                 .expertName(p.getExpert().getFullName())
                 .expertAvatarUrl(p.getExpert().getAvatarUrl())
                 .status(p.getStatus())
-                .totalBudget(p.getJob().getBudget())
+                .totalBudget(p.getBudget())
                 .progress(progress)
                 .milestones(ms.stream().map(this::msToResponse).toList())
                 .createdAt(p.getCreatedAt())

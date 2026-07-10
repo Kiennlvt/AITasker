@@ -2,11 +2,18 @@ package com.aitasker.service.impl;
 
 import com.aitasker.dto.response.ExpertSuggestionDto;
 import com.aitasker.dto.response.GeneratePrdResponse;
+import com.aitasker.dto.response.ProposalInsightsResponse;
 import com.aitasker.dto.response.SuggestExpertsResponse;
+import com.aitasker.entity.JobPost;
+import com.aitasker.entity.Proposal;
+import com.aitasker.entity.Review;
 import com.aitasker.entity.User;
 import com.aitasker.enums.ProposalStatus;
 import com.aitasker.enums.UserRole;
+import com.aitasker.exception.AppException;
+import com.aitasker.repository.JobPostRepository;
 import com.aitasker.repository.ProposalRepository;
+import com.aitasker.repository.ReviewRepository;
 import com.aitasker.repository.UserRepository;
 import com.aitasker.service.AiService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +34,8 @@ public class AiServiceImpl implements AiService {
 
     private final UserRepository userRepo;
     private final ProposalRepository proposalRepo;
+    private final JobPostRepository jobRepo;
+    private final ReviewRepository reviewRepo;
 
     @Value("${app.ai.anthropic-api-key:}")
     private String apiKey;
@@ -82,6 +91,105 @@ public class AiServiceImpl implements AiService {
         }
 
         return SuggestExpertsResponse.builder().experts(ranked).build();
+    }
+
+    // ─── analyzeProposals ────────────────────────────────────────────────────────
+
+    @Override
+    public ProposalInsightsResponse analyzeProposals(String clientId, String jobId) {
+        JobPost job = jobRepo.findById(jobId)
+                .orElseThrow(() -> AppException.notFound("Job not found"));
+        if (!job.getClient().getId().equals(clientId))
+            throw AppException.forbidden("Not your job");
+
+        List<Proposal> proposals = proposalRepo.findByJobIdOrderByCreatedAtDesc(jobId).stream()
+                .filter(p -> p.getStatus() != ProposalStatus.WITHDRAWN)
+                .toList();
+
+        if (proposals.isEmpty()) {
+            return ProposalInsightsResponse.builder()
+                    .insight("No proposals yet. Once experts start applying, insights comparing their price, delivery time, and rating will appear here.")
+                    .build();
+        }
+
+        String insight = null;
+        if (apiKey != null && !apiKey.isBlank()) {
+            insight = callClaude(buildProposalInsightPrompt(job, proposals));
+        }
+        if (insight == null) {
+            insight = buildTemplateInsight(proposals);
+        }
+
+        return ProposalInsightsResponse.builder().insight(insight).build();
+    }
+
+    private String buildProposalInsightPrompt(JobPost job, List<Proposal> proposals) {
+        StringBuilder candidates = new StringBuilder();
+        for (Proposal p : proposals) {
+            Double rating = averageRating(p.getExpert().getId());
+            candidates.append("- %s: $%s bid, %s day delivery, rating %s%s%n".formatted(
+                    p.getExpert().getFullName(),
+                    p.getBidAmount(),
+                    p.getDeliveryTime(),
+                    rating != null ? "%.1f/5".formatted(rating) : "no reviews yet",
+                    p.getCoverLetter() != null && !p.getCoverLetter().isBlank()
+                            ? ", pitch: \"" + truncate(p.getCoverLetter(), 150) + "\"" : ""
+            ));
+        }
+
+        String skills = job.getSkills() != null && !job.getSkills().isEmpty()
+                ? String.join(", ", job.getSkills()) : "General";
+
+        return """
+                You are helping a client pick the best freelance proposal for their job.
+
+                Job: %s (skills: %s)
+
+                Candidates:
+                %s
+
+                Write a short, actionable comparison (3-4 sentences, no markdown headers, no bullet points) that helps the client decide. \
+                Point out trade-offs (e.g. cheapest vs. fastest vs. highest-rated) and name a recommended pick with a brief reason. \
+                Be direct and specific, referencing the candidates by name.
+                """.formatted(job.getTitle(), skills, candidates);
+    }
+
+    private String buildTemplateInsight(List<Proposal> proposals) {
+        Proposal cheapest = proposals.stream()
+                .min(Comparator.comparing(p -> nz(p.getBidAmount()))).orElse(proposals.get(0));
+        Proposal fastest = proposals.stream()
+                .min(Comparator.comparing(p -> p.getDeliveryTime() != null ? p.getDeliveryTime() : Integer.MAX_VALUE))
+                .orElse(proposals.get(0));
+        Proposal topRated = proposals.stream()
+                .max(Comparator.comparing(p -> nz(averageRating(p.getExpert().getId()))))
+                .orElse(proposals.get(0));
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("You have %d proposal%s to review. ".formatted(proposals.size(), proposals.size() == 1 ? "" : "s"));
+        sb.append("%s offers the lowest bid at $%s. ".formatted(cheapest.getExpert().getFullName(), cheapest.getBidAmount()));
+        if (!fastest.getId().equals(cheapest.getId())) {
+            sb.append("%s can deliver fastest, in %s months. ".formatted(fastest.getExpert().getFullName(), fastest.getDeliveryTime()));
+        }
+        Double topRating = averageRating(topRated.getExpert().getId());
+        if (topRating != null && !topRated.getId().equals(cheapest.getId())) {
+            sb.append("%s has the highest rating at %.1f/5. ".formatted(topRated.getExpert().getFullName(), topRating));
+        }
+        sb.append("Weigh price against delivery speed and track record before deciding.");
+        return sb.toString();
+    }
+
+    private Double averageRating(String expertId) {
+        List<Review> reviews = reviewRepo.findByReceiverIdOrderByCreatedAtDesc(expertId);
+        if (reviews.isEmpty()) return null;
+        return reviews.stream().mapToInt(Review::getRating).average().orElse(0.0);
+    }
+
+    private double nz(Double d) {
+        return d != null ? d : 0.0;
+    }
+
+    private String truncate(String s, int max) {
+        return s.length() > max ? s.substring(0, max).trim() + "..." : s;
     }
 
     // ─── Claude API ──────────────────────────────────────────────────────────────

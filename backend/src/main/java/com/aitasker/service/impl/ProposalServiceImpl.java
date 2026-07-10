@@ -23,6 +23,7 @@ public class ProposalServiceImpl implements ProposalService {
     private final JobPostRepository jobRepo;
     private final UserRepository userRepo;
     private final ProjectRepository projectRepo;
+    private final ReviewRepository reviewRepo;
     private final ConversationService conversationService;
     private final NotificationService notificationService;
 
@@ -102,6 +103,7 @@ public class ProposalServiceImpl implements ProposalService {
                 .expert(proposal.getExpert())
                 .status(ProjectStatus.ACTIVE)
                 .conversation(conversation)
+                .budget(proposal.getBidAmount())
                 .build();
         projectRepo.save(project);
 
@@ -178,11 +180,18 @@ public class ProposalServiceImpl implements ProposalService {
                 .expertId(p.getExpert().getId())
                 .expertName(p.getExpert().getFullName())
                 .expertAvatarUrl(p.getExpert().getAvatarUrl())
+                .expertRating(averageRating(p.getExpert().getId()))
                 .coverLetter(p.getCoverLetter())
                 .bidAmount(p.getBidAmount())
                 .deliveryTime(p.getDeliveryTime())
                 .status(p.getStatus())
                 .createdAt(p.getCreatedAt())
                 .build();
+    }
+
+    private Double averageRating(String expertId) {
+        List<Review> reviews = reviewRepo.findByReceiverIdOrderByCreatedAtDesc(expertId);
+        if (reviews.isEmpty()) return null;
+        return reviews.stream().mapToInt(Review::getRating).average().orElse(0.0);
     }
 }

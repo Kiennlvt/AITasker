@@ -1,6 +1,7 @@
 package com.aitasker.service;
 
 import com.aitasker.dto.response.GeneratePrdResponse;
+import com.aitasker.dto.response.ProposalInsightsResponse;
 import com.aitasker.dto.response.SuggestExpertsResponse;
 
 public interface AiService {
@@ -9,4 +10,6 @@ public interface AiService {
                                     String timelineUnit, String description, String selectedPackage);
 
     SuggestExpertsResponse suggestExperts(String title, String category, String description);
+
+    ProposalInsightsResponse analyzeProposals(String clientId, String jobId);
 }

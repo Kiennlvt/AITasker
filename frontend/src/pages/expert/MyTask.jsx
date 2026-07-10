@@ -254,8 +254,8 @@ export default function MyTask() {
                     )}
                   </div>
                   <div className="text-right shrink-0">
-                    {project.budget != null && (
-                      <p className="font-bold text-[#15153d] text-base">${project.budget.toLocaleString()}</p>
+                    {project.totalBudget != null && (
+                      <p className="font-bold text-[#15153d] text-base">${project.totalBudget.toLocaleString()}</p>
                     )}
                     {project.progress != null && (
                       <p className="text-xs text-gray-400 mt-1">{project.progress}% done</p>
@@ -291,6 +291,21 @@ export default function MyTask() {
       >
         <ArrowLeft size={16} /> Back to My Tasks
       </button>
+
+      <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between gap-6 flex-wrap">
+        <div>
+          <h2 className="text-xl font-bold text-[#15153d]">{selectedProject.jobTitle}</h2>
+          {selectedProject.clientName && (
+            <p className="text-sm text-gray-400 mt-1">Client: {selectedProject.clientName}</p>
+          )}
+        </div>
+        {selectedProject.totalBudget != null && (
+          <div className="text-right shrink-0">
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Project Price</p>
+            <p className="text-2xl font-bold text-orange-500">${selectedProject.totalBudget.toLocaleString()}</p>
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* LEFT: MILESTONES */}

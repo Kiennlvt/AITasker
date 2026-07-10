@@ -5,6 +5,7 @@ import MessagesIcon from "../../components/ui/MesageIcon";
 import Button from "../../components/ui/Button";
 import { getMyJobs, deleteJob } from "../../api/jobs";
 import { getProposalsByJob, acceptProposal, rejectProposal } from "../../api/proposals";
+import { getProposalInsights } from "../../api/ai";
 import { findOrCreateDirect } from "../../api/conversations";
 import toast from "react-hot-toast";
 
@@ -38,6 +39,8 @@ export default function ManageProposals() {
   const [sortBy, setSortBy] = useState("NEWEST");
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
+  const [insight, setInsight] = useState("");
+  const [insightLoading, setInsightLoading] = useState(false);
   const filterRef = useRef(null);
   const sortRef = useRef(null);
 
@@ -73,6 +76,18 @@ export default function ManageProposals() {
       .finally(() => setLoadingProposals(false));
   }, [selectedJobId]);
 
+  useEffect(() => {
+    if (!selectedJobId) {
+      setInsight("");
+      return;
+    }
+    setInsightLoading(true);
+    getProposalInsights(selectedJobId)
+      .then((data) => setInsight(data.insight))
+      .catch(() => setInsight("Unable to generate insights right now."))
+      .finally(() => setInsightLoading(false));
+  }, [selectedJobId]);
+
   const handleAccept = async (id) => {
     setActionLoading(id + "-accept");
     try {
@@ -85,6 +100,7 @@ export default function ManageProposals() {
         prev.map((p) => (p.id === id ? { ...p, status: "ACCEPTED" } : p))
       );
       toast.success("Proposal accepted! The job is now in progress.");
+      getProposalInsights(selectedJobId).then((data) => setInsight(data.insight)).catch(() => {});
     } catch {
       toast.error("Failed to accept proposal");
     } finally {
@@ -100,6 +116,7 @@ export default function ManageProposals() {
         prev.map((p) => (p.id === id ? { ...p, status: "REJECTED" } : p))
       );
       toast.success("Proposal rejected.");
+      getProposalInsights(selectedJobId).then((data) => setInsight(data.insight)).catch(() => {});
     } catch {
       toast.error("Failed to reject proposal");
     } finally {
@@ -170,6 +187,29 @@ export default function ManageProposals() {
           return new Date(b.createdAt ?? 0) - new Date(a.createdAt ?? 0);
       }
     });
+
+  // Rank candidates by a weighted score: lower price and delivery time are
+  // better, higher rating is better. Unrated experts don't get penalized
+  // relative to each other, only relative to rated ones.
+  const rankedCandidates = (() => {
+    if (proposals.length === 0) return [];
+    const bids = proposals.map((p) => p.bidAmount ?? 0);
+    const deliveries = proposals.map((p) => p.deliveryTime ?? 0);
+    const minBid = Math.min(...bids), maxBid = Math.max(...bids);
+    const minDelivery = Math.min(...deliveries), maxDelivery = Math.max(...deliveries);
+    const maxRating = Math.max(...proposals.map((p) => p.expertRating ?? 0), 1);
+
+    return [...proposals]
+      .map((p) => {
+        const priceScore = maxBid === minBid ? 1 : 1 - ((p.bidAmount ?? maxBid) - minBid) / (maxBid - minBid);
+        const deliveryScore = maxDelivery === minDelivery ? 1 : 1 - ((p.deliveryTime ?? maxDelivery) - minDelivery) / (maxDelivery - minDelivery);
+        const ratingScore = (p.expertRating ?? 0) / maxRating;
+        const score = priceScore * 0.4 + deliveryScore * 0.3 + ratingScore * 0.3;
+        return { ...p, _score: score };
+      })
+      .sort((a, b) => b._score - a._score)
+      .slice(0, 3);
+  })();
 
   const statusBadge = (status) => {
     if (status === "ACCEPTED") return "bg-emerald-50 text-emerald-600 border border-emerald-200";
@@ -389,7 +429,7 @@ export default function ManageProposals() {
                   </span>
                   <span>
                     Duration:{" "}
-                    <span className="text-[#1a1a3c] font-bold">{proposal.deliveryTime} days</span>
+                    <span className="text-[#1a1a3c] font-bold">{proposal.deliveryTime} months</span>
                   </span>
                 </div>
               </div>
@@ -430,15 +470,23 @@ export default function ManageProposals() {
         {/* Comparison sidebar */}
         <div className="space-y-6">
           <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-5 shadow-sm">
-            <h3 className="font-bold text-orange-500 text-base flex items-center gap-2 mb-4">
+            <h3 className="font-bold text-orange-500 text-base flex items-center gap-2 mb-1">
               <span className="scale-x-[-1] inline-block">📐</span> Candidate Comparison
             </h3>
+            <p className="text-[10px] text-gray-400 font-medium mb-4">
+              Top 3 ranked by a blended score: price 40%, delivery speed 30%, rating 30%.
+            </p>
             <div className="space-y-4 mb-4">
-              {proposals.slice(0, 3).map((item, index) => {
+              {rankedCandidates.map((item, index) => {
                 const maxBid = Math.max(...proposals.map((p) => p.bidAmount ?? 0), 1);
                 const pct = Math.round(((item.bidAmount ?? 0) / maxBid) * 100);
                 return (
-                  <div key={index} className="bg-white border border-gray-50 rounded-xl p-3 shadow-sm space-y-2">
+                  <div key={item.id} className="bg-white border border-gray-50 rounded-xl p-3 shadow-sm space-y-2 relative">
+                    {index === 0 && (
+                      <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-[9px] font-bold uppercase px-2 py-0.5 rounded-full shadow-sm">
+                        Top pick
+                      </span>
+                    )}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         {item.expertAvatarUrl ? (
@@ -449,6 +497,11 @@ export default function ManageProposals() {
                           </div>
                         )}
                         <h4 className="font-bold text-xs text-[#1a1a3c]">{item.expertName}</h4>
+                        {item.expertRating != null && (
+                          <span className="flex items-center gap-0.5 text-[10px] font-bold text-amber-500">
+                            <Star size={10} fill="currentColor" /> {item.expertRating.toFixed(1)}
+                          </span>
+                        )}
                       </div>
                       <span className="text-orange-500 font-black text-xs">
                         ${item.bidAmount?.toLocaleString()}
@@ -460,7 +513,7 @@ export default function ManageProposals() {
                       </div>
                       <div className="text-[9px] text-gray-400 font-bold">{pct}% of top bid</div>
                     </div>
-                    <p className="text-[11px] text-gray-400 font-medium">{item.deliveryTime} days delivery</p>
+                    <p className="text-[11px] text-gray-400 font-medium">{item.deliveryTime} months delivery</p>
                   </div>
                 );
               })}
@@ -472,9 +525,13 @@ export default function ManageProposals() {
               <div className="p-1.5 bg-orange-500 text-white rounded-lg"><Sparkles size={12} fill="currentColor" /></div>
               AI Insights
             </div>
-            <p className="text-gray-500 text-xs leading-relaxed">
-              Review proposals carefully. Compare bid amounts, delivery timelines, and expert ratings before making your decision.
-            </p>
+            {insightLoading ? (
+              <p className="text-gray-400 text-xs leading-relaxed animate-pulse">Analyzing proposals...</p>
+            ) : (
+              <p className="text-gray-500 text-xs leading-relaxed">
+                {insight || "Review proposals carefully. Compare bid amounts, delivery timelines, and expert ratings before making your decision."}
+              </p>
+            )}
           </div>
         </div>
 

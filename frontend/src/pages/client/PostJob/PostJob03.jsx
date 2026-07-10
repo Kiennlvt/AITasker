@@ -331,7 +331,7 @@ export default function PostJob03() {
     try {
       const BUDGET_MAP = { basic: 1000, standard: 5000, premium: 15000 };
 
-      const TIMELINE_UNIT_MAP = { Tháng: "months", Tuần: "weeks", Ngày: "days" };
+      const TIMELINE_UNIT_MAP = { Months: "months", Weeks: "weeks", Days: "days" };
       let deadline = null;
       if (store.timelineAmount && store.timelineUnit) {
         const d = new Date();
@@ -380,7 +380,7 @@ export default function PostJob03() {
     try {
       const BUDGET_MAP = { basic: 1000, standard: 5000, premium: 15000 };
 
-      const TIMELINE_UNIT_MAP = { Tháng: "months", Tuần: "weeks", Ngày: "days" };
+      const TIMELINE_UNIT_MAP = { Months: "months", Weeks: "weeks", Days: "days" };
       let deadline = null;
       if (store.timelineAmount && store.timelineUnit) {
         const d = new Date();

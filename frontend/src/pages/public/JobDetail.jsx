@@ -228,13 +228,13 @@ export default function JobDetail() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase">Delivery (days)</label>
+                        <label className="text-xs font-bold text-gray-500 uppercase">Estimated Timeline (Months)</label>
                         <input
                           type="number"
                           value={days}
                           onChange={(e) => setDays(e.target.value)}
                           className="w-full mt-1 p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-orange-400"
-                          placeholder="e.g. 30"
+                          placeholder="e.g. 12 months to complete"
                         />
                       </div>
                     </div>

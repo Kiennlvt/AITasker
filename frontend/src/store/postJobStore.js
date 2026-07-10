@@ -7,7 +7,7 @@ const usePostJobStore = create((set) => ({
   title: '',
   category: 'Natural Language Processing',
   timelineAmount: '',
-  timelineUnit: 'Tháng',
+  timelineUnit: 'Months',
   description: '',
   // Step 2
   selectedPackage: 'basic',
@@ -33,7 +33,7 @@ const usePostJobStore = create((set) => ({
       generatedPRD: draft.description || '',
       suggestedExperts: [],
       timelineAmount: '',
-      timelineUnit: 'Tháng',
+      timelineUnit: 'Months',
     }),
 
   reset: () =>
@@ -41,7 +41,7 @@ const usePostJobStore = create((set) => ({
       title: '',
       category: 'Natural Language Processing',
       timelineAmount: '',
-      timelineUnit: 'Tháng',
+      timelineUnit: 'Months',
       description: '',
       selectedPackage: 'basic',
       generatedPRD: '',

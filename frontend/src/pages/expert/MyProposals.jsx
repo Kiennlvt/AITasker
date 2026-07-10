@@ -202,7 +202,7 @@ export default function MyProposals() {
                     Delivery Time
                   </p>
                   <p className="font-bold text-[#15153d] text-sm mt-0.5">
-                    {proposal.deliveryTime} days
+                    {proposal.deliveryTime} Months
                   </p>
                 </div>
               </div>

@@ -124,7 +124,6 @@ export default function ProjectDetailClient() {
               {s.label}
             </span>
           </div>
-          <p className="text-gray-500 text-sm mt-1 max-w-[800px]">{project.jobDescription}</p>
         </div>
 
         <div className="flex items-center gap-3">

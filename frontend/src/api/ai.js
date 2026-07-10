@@ -5,3 +5,6 @@ export const generatePRD = (jobData) =>
 
 export const suggestExperts = (jobData) =>
   api.post('/ai/suggest-experts', jobData).then((r) => r.data.data);
+
+export const getProposalInsights = (jobId) =>
+  api.get(`/ai/proposal-insights/${jobId}`).then((r) => r.data.data);
