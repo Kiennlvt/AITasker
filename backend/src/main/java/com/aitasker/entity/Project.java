@@ -37,6 +37,9 @@ public class Project {
     @Builder.Default
     private ProjectStatus status = ProjectStatus.PENDING;
 
+    @Column(nullable = false)
+    private Double budget;
+
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL)
     private List<Milestone> milestones;
 
