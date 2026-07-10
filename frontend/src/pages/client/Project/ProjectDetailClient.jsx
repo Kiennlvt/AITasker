@@ -18,6 +18,21 @@ function milestoneUi(status) {
   }
 }
 
+function milestoneStatusStyle(status) {
+  switch (status) {
+    case "APPROVED":
+      return { label: "Approved", className: "bg-emerald-50 text-emerald-600 border-emerald-100" };
+    case "SUBMITTED":
+      return { label: "In Review", className: "bg-blue-50 text-blue-600 border-blue-100" };
+    case "REVISION_REQUESTED":
+      return { label: "Revision", className: "bg-amber-50 text-amber-600 border-amber-100" };
+    case "IN_PROGRESS":
+      return { label: "In Progress", className: "bg-orange-50 text-orange-600 border-orange-100" };
+    default:
+      return { label: "Pending", className: "bg-gray-50 text-gray-500 border-gray-100" };
+  }
+}
+
 function projectStatusStyle(status) {
   switch (status) {
     case "ACTIVE":
@@ -37,11 +52,12 @@ export default function ProjectDetailClient() {
   const [milestones, setMilestones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
-  const [revisionNote, setRevisionNote] = useState({});   
-  const [revisionOpen, setRevisionOpen] = useState(null); 
-  const [showReviewModal, setShowReviewModal] = useState(false); 
-  const [rating, setRating] = useState(0);                     
-  const [comment, setComment] = useState("");                   
+  const [revisionNote, setRevisionNote] = useState({});
+  const [revisionDueDate, setRevisionDueDate] = useState({});
+  const [revisionOpen, setRevisionOpen] = useState(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
@@ -71,15 +87,22 @@ export default function ProjectDetailClient() {
 
   const handleRevision = async (milestoneId) => {
     const note = revisionNote[milestoneId]?.trim();
+    const dueDate = revisionDueDate[milestoneId];
     if (!note) { toast.error("Please enter a reason for the revision."); return; }
+    if (!dueDate) { toast.error("Please choose a new due date for the revision."); return; }
     setActionLoading(milestoneId + "-revision");
     try {
-      await requestRevision(milestoneId, note);
+      await requestRevision(milestoneId, note, dueDate);
       setMilestones((prev) =>
-        prev.map((m) => (m.id === milestoneId ? { ...m, status: "REVISION_REQUESTED" } : m))
+        prev.map((m) =>
+          m.id === milestoneId
+            ? { ...m, status: "REVISION_REQUESTED", revisionNote: note, revisionDueDate: dueDate }
+            : m
+        )
       );
       setRevisionOpen(null);
       setRevisionNote((prev) => ({ ...prev, [milestoneId]: "" }));
+      setRevisionDueDate((prev) => ({ ...prev, [milestoneId]: "" }));
       toast.success("Revision requested.");
     } catch {
       toast.error("Failed to request revision");
@@ -145,6 +168,15 @@ export default function ProjectDetailClient() {
             <div className="relative pl-6 space-y-8 before:content-[''] before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-gray-100">
               {milestones.map((milestone) => {
                 const uiStatus = milestoneUi(milestone.status);
+                const isRevision = milestone.status === "REVISION_REQUESTED";
+                const effectiveDueDate = isRevision && milestone.revisionDueDate
+                  ? milestone.revisionDueDate
+                  : milestone.dueDate;
+                const isPastDue =
+                  effectiveDueDate &&
+                  new Date(effectiveDueDate) < new Date() &&
+                  milestone.status !== "APPROVED" &&
+                  milestone.status !== "SUBMITTED";
                 return (
                   <div key={milestone.id} className="relative">
                     <div className="absolute -left-[24px] top-1 bg-white p-0.5 z-10">
@@ -162,17 +194,17 @@ export default function ProjectDetailClient() {
                     <div className={`p-5 rounded-2xl border ${uiStatus === "active" ? "bg-gray-50/50 border-gray-100 shadow-sm" : "border-transparent"}`}>
                       <div className="flex justify-between items-start gap-4 mb-2">
                         <h4 className="font-bold text-[#1a1a3c] text-base">{milestone.title}</h4>
-                        {uiStatus === "active" ? (
-                          <span className="bg-orange-500 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded">
-                            {milestone.status === "REVISION_REQUESTED" ? "Revision" : "Active"}
-                          </span>
-                        ) : (
-                          <span className="text-xs font-semibold text-gray-400">
-                            {uiStatus === "completed" ? "Approved" : "Pending"}
-                          </span>
-                        )}
+                        <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full border shrink-0 ${milestoneStatusStyle(milestone.status).className}`}>
+                          {milestoneStatusStyle(milestone.status).label}
+                        </span>
                       </div>
                       <p className="text-gray-400 text-sm leading-relaxed mb-3">{milestone.description}</p>
+                      {effectiveDueDate && (
+                        <p className={`text-[11px] font-bold mb-3 ${isPastDue ? "text-red-500" : "text-gray-400"}`}>
+                          {isRevision && milestone.revisionDueDate ? "Revision due" : "Due"}: {new Date(effectiveDueDate).toLocaleDateString()}
+                          {isPastDue && " — Overdue!"}
+                        </p>
+                      )}
 
                       {milestone.amount && (
                         <p className="text-xs font-bold text-gray-500 mb-3">
@@ -191,6 +223,11 @@ export default function ProjectDetailClient() {
                         <div className="mt-3 p-3 bg-amber-50 border border-amber-100 rounded-xl">
                           <p className="text-[11px] font-bold text-amber-600 uppercase mb-1">Your Revision Request</p>
                           <p className="text-xs text-gray-700 leading-relaxed">{milestone.revisionNote}</p>
+                          {milestone.revisionDueDate && (
+                            <p className="text-[11px] text-amber-600 font-semibold mt-1.5">
+                              New due date: {new Date(milestone.revisionDueDate).toLocaleDateString()}
+                            </p>
+                          )}
                         </div>
                       )}
 
@@ -243,6 +280,17 @@ export default function ProjectDetailClient() {
                                 placeholder="Describe what needs to be revised..."
                                 className="w-full p-3 border border-gray-200 rounded-xl text-xs outline-none focus:border-orange-400 min-h-[80px] resize-none"
                               />
+                              <div>
+                                <label className="text-[11px] font-bold text-gray-400 uppercase block mb-1">
+                                  New due date for resubmission
+                                </label>
+                                <input
+                                  type="date"
+                                  value={revisionDueDate[milestone.id] ?? ""}
+                                  onChange={(e) => setRevisionDueDate((prev) => ({ ...prev, [milestone.id]: e.target.value }))}
+                                  className="w-full p-2.5 border border-gray-200 rounded-xl text-xs outline-none focus:border-orange-400"
+                                />
+                              </div>
                               <button
                                 onClick={() => handleRevision(milestone.id)}
                                 disabled={!!actionLoading}
@@ -327,8 +375,8 @@ export default function ProjectDetailClient() {
       {showReviewModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-[24px] p-8 max-w-md w-full shadow-xl relative border border-gray-100/50 flex flex-col items-center">
-            <button 
-              onClick={() => setShowReviewModal(false)} 
+            <button
+              onClick={() => setShowReviewModal(false)}
               className="absolute top-5 right-5 text-gray-300 hover:text-gray-500 text-xl font-light"
             >
               ✕
@@ -351,10 +399,10 @@ export default function ProjectDetailClient() {
                   onClick={() => setRating(star)}
                   className="transition-all transform hover:scale-110 outline-none"
                 >
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    viewBox="0 0 24 24" 
-                    strokeWidth="1.5" 
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    strokeWidth="1.5"
                     className={`w-9 h-9 ${star <= rating ? "fill-[#ea8441] stroke-[#ea8441]" : "fill-none stroke-[#d2d4dc]"}`}
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499c.151-.326.621-.326.772 0l2.742 5.556 6.13 1.107c.362.065.507.513.23.768l-4.42 4.307 1.043 6.113c.062.365-.32.643-.642.47l-5.46-2.873-5.46 2.873c-.322.172-.704-.105-.642-.47l1.042-6.113-4.42-4.307c-.277-.255-.132-.703.23-.768l6.13-1.107 2.742-5.556z" />
@@ -391,7 +439,7 @@ export default function ProjectDetailClient() {
                       rating: rating,
                       comment: comment.trim()
                     };
-                    
+
                     const response = await fetch("http://localhost:8080/api/reviews", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },

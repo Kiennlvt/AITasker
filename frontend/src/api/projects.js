@@ -19,8 +19,8 @@ export const updateMilestone = (projectId, milestoneId, milestone) =>
 export const approveMilestone = (milestoneId) =>
   api.patch(`/projects/milestones/${milestoneId}/approve`).then(r => r.data.data);
 
-export const requestRevision = (milestoneId, note) =>
-  api.patch(`/projects/milestones/${milestoneId}/revision`, null, { params: { note } }).then(r => r.data.data);
+export const requestRevision = (milestoneId, note, revisionDueDate) =>
+  api.patch(`/projects/milestones/${milestoneId}/revision`, null, { params: { note, revisionDueDate } }).then(r => r.data.data);
 
 export const submitMilestone = (milestoneId, note) =>
   api.patch(`/projects/milestones/${milestoneId}/submit`, null, { params: { note } }).then(r => r.data.data);

@@ -5,7 +5,6 @@ import ServiceCard from "../../components/common/ServiceCard";
 import FeaturedServiceCard from "../../components/common/FeaturedServiceCard";
 import { getServices } from "../../api/services";
 
-const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=800";
 const PAGE_SIZE = 12;
 
 const MAIN_CATEGORIES = ["NLP & LLMs", "Computer Vision", "Data Engineering", "Reinforcement Learning"];
@@ -40,7 +39,7 @@ function toCardShape(svc, index) {
     title: svc.title || svc.name || "AI Service",
     author: svc.expertName || svc.author || "Unknown Expert",
     rating: Number(rawRating).toFixed(1), 
-    image: svc.imageUrl || FALLBACK_IMAGE,
+    image: svc.imageUrl || null,
     price: typeof svc.price === "number" ? `$${svc.price.toLocaleString()}` : (svc.price || "$2,500"),
     tags: svc.tags && svc.tags.length > 0 ? svc.tags : ["AI Expert"],
   };
@@ -88,7 +87,7 @@ export default function Services() {
     getServices(page, PAGE_SIZE, sort.value, ratingType) 
     .then((data) => {
       setServices(data.content ?? []);
-      setTotalPages(data.totalPages ?? 1);
+setTotalPages(data.totalPages ?? 1);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -166,7 +165,7 @@ export default function Services() {
                 {SORT_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
-                    onClick={() => handleSort(opt)}
+onClick={() => handleSort(opt)}
                     className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition-colors hover:bg-orange-50 ${
                       sort.value === opt.value
                         ? "font-bold text-orange-500"

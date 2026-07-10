@@ -32,7 +32,7 @@ const CATEGORIES = [
   "Other",
 ];
 
-const MAX_PRICE = 10000;
+const MAX_PRICE = 20000;
 
 export default function SidebarMarketplace({
   theme = "orange",
@@ -96,12 +96,12 @@ export default function SidebarMarketplace({
     navigate("/login");
   }
 
-  const priceLabel = maxPrice >= MAX_PRICE ? "$10k+" : `$${maxPrice.toLocaleString()}`;
+  const priceLabel = maxPrice >= MAX_PRICE ? "$20k+" : `$${maxPrice.toLocaleString()}`;
 
   return (
     <aside className="w-[250px] border-r border-gray-200 bg-white flex flex-col h-screen sticky top-0 overflow-hidden">
       {/* TOP — scrollable */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
+<div className="flex-1 min-h-0 overflow-y-auto">
         {/* LOGO */}
         <div className="px-6 py-8 flex items-center gap-3">
           <img src={logo} alt="Logo" className="h-12 w-auto rounded-full" />
@@ -182,7 +182,7 @@ export default function SidebarMarketplace({
                 { label: "4.5 - 5.0", value: "4.5-5.0" },
                 { label: "4.0",       value: "4.0"     },
               ].map(({ label, value }) => (
-                <label key={value} className="flex items-center gap-3 text-sm text-slate-500 cursor-pointer">
+<label key={value} className="flex items-center gap-3 text-sm text-slate-500 cursor-pointer">
                   <input
                     type="radio"
                     name="rating-filter"
