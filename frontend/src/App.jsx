@@ -35,6 +35,7 @@ import AdminLayout from "./components/layout/AdminLayout";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import ManageUsersPage from "./pages/admin/ManageUsersPage";
 import ManageJobsPage from "./pages/admin/ManageJobsPage";
+import ManageDisputesPage from "./pages/admin/ManageDisputesPage";
 import StatisticsPage from "./pages/admin/StatisticsPage";
 import SavedServices from "./pages/client/SavedService";
 import SavedJobs from "./pages/expert/SavedJobs";
@@ -109,6 +110,7 @@ export default function App() {
           <Route path="users" element={<ManageUsersPage />} />
           <Route path="jobs" element={<ManageJobsPage />} />
           <Route path="statistics" element={<StatisticsPage />} />
+          <Route path="disputes" element={<ManageDisputesPage />} />
         </Route>
 
         <Route path="/oauth2/callback" element={<OAuth2CallbackPage />} />

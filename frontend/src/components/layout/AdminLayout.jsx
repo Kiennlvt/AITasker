@@ -1,6 +1,6 @@
 import React from "react";
 import { Outlet } from "react-router-dom";
-import { MdDashboard, MdManageAccounts, MdWork } from "react-icons/md";
+import { MdDashboard, MdManageAccounts, MdWork, MdGavel } from "react-icons/md"; 
 import { IoStatsChart } from "react-icons/io5";
 import Sidebar from "../ui/Siderbar";
 import Header from "../ui/Header";
@@ -11,6 +11,7 @@ export default function AdminLayout() {
     { path: "/admin/users", name: "Manage Users", icon: <MdManageAccounts className="text-xl" /> },
     { path: "/admin/jobs", name: "Manage Jobs", icon: <MdWork className="text-xl" /> },
     { path: "/admin/statistics", name: "Statistics", icon: <IoStatsChart className="text-xl" /> },
+    { path: "/admin/disputes", name: "Manage Disputes", icon: <MdGavel className="text-xl" /> }, 
   ];
 
   return (
