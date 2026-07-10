@@ -54,7 +54,7 @@ const EXPECTATIONS_BY_PACKAGE = {
   premium: (cat) =>
     `Senior ${cat} expert with 5+ years of enterprise-grade project experience. ` +
     `Must demonstrate deep technical expertise, strong stakeholder communication, and the ability to lead architecture decisions independently. ` +
-    `A portfolio of large-scale projects, prior publications, or notable open-source contributions are strongly preferred. ` +
+`A portfolio of large-scale projects, prior publications, or notable open-source contributions are strongly preferred. ` +
     `Experience with compliance, security standards, and cross-functional team collaboration is required.`,
 };
 
@@ -118,7 +118,7 @@ function buildDynamicPRD({ title, category, objective, scope, expectations, pkg,
 
 const EXPERT_POOL = {
   "Natural Language Processing": [
-    { id: "e1", name: "Dr. Aris Thorn",  title: "LLM Research Lead",       skills: ["NLP", "Fine-tuning", "RAG"],        rating: 4.9, jobs: 47, rate: "$120/hr", initials: "AT", match: 97, color: "bg-orange-100 text-orange-600" },
+{ id: "e1", name: "Dr. Aris Thorn",  title: "LLM Research Lead",       skills: ["NLP", "Fine-tuning", "RAG"],        rating: 4.9, jobs: 47, rate: "$120/hr", initials: "AT", match: 97, color: "bg-orange-100 text-orange-600" },
     { id: "e2", name: "Sarah Chen",      title: "NLP Engineer",             skills: ["BERT", "GPT-4", "PyTorch"],         rating: 4.8, jobs: 32, rate: "$95/hr",  initials: "SC", match: 91, color: "bg-blue-100 text-blue-600"   },
     { id: "e3", name: "Liam Park",       title: "AI Researcher",            skills: ["Transformers", "LangChain", "HF"],  rating: 4.7, jobs: 28, rate: "$85/hr",  initials: "LP", match: 88, color: "bg-purple-100 text-purple-600"},
   ],
@@ -140,7 +140,6 @@ const EXPERT_POOL = {
 };
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
-
 function SectionField({ icon, label, value, onChange, rows = 3, placeholder }) {
   return (
     <div className="group">
@@ -208,7 +207,7 @@ export default function PostJob03() {
 
   // ── Document sections state (structured mode — before AI) ──
   const [objective,    setObjective]    = useState("");
-  const [requirements, setRequirements] = useState("");
+const [requirements, setRequirements] = useState("");
   const [scope,        setScope]        = useState("");
   const [expectations, setExpectations] = useState("");
 
@@ -278,7 +277,7 @@ export default function PostJob03() {
         category: store.category,
         timelineAmount: store.timelineAmount,
         timelineUnit: store.timelineUnit,
-        description: seedObjective,
+description: seedObjective,
         scope,
         expectations,
         selectedPackage: store.selectedPackage,
@@ -348,6 +347,7 @@ export default function PostJob03() {
         description: isAIMode ? aiContent : buildDocumentFromSections(),
         budget: BUDGET_MAP[store.selectedPackage] ?? 1000,
         deadline,
+        category: store.category,
         skills: [store.category],
       };
 
@@ -368,7 +368,7 @@ export default function PostJob03() {
       }
       
       store.reset();
-      navigate("/dashboard");
+navigate("/dashboard");
     } catch (err) {
       console.error(err);
       toast.error(err?.response?.data?.message || "Failed to post job. Please try again.");
@@ -397,6 +397,7 @@ export default function PostJob03() {
         description: isAIMode ? aiContent : buildDocumentFromSections(),
         budget: BUDGET_MAP[store.selectedPackage] ?? 1000,
         deadline,
+        category: store.category,
         skills: [store.category],
       };
 
@@ -447,7 +448,7 @@ export default function PostJob03() {
                 <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                 Generating...
               </>
-            ) : isGenerated ? (
+) : isGenerated ? (
               <>✓ Regenerate with AI</>
             ) : (
               <><span>✨</span> Optimize with AI</>
@@ -505,7 +506,7 @@ export default function PostJob03() {
                 <div className="flex items-center justify-between px-5 py-3 bg-gradient-to-r from-[#027a89]/10 to-transparent border-b border-gray-200">
                   <div className="flex items-center gap-2">
                     <span className="text-sm">✨</span>
-                    <span className="text-xs font-bold text-[#027a89] uppercase tracking-wider">AI-Generated PRD</span>
+<span className="text-xs font-bold text-[#027a89] uppercase tracking-wider">AI-Generated PRD</span>
                   </div>
                   <button
                     onClick={() => { setIsAIMode(false); setIsGenerated(false); }}
@@ -571,7 +572,7 @@ export default function PostJob03() {
           {isGenerated && experts.length > 0 && (
             <div className="mt-10">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-xl">✨</span>
+<span className="text-xl">✨</span>
                 <h3 className="text-xl font-bold text-[#15153d]">AI-Suggested Experts</h3>
               </div>
               <p className="text-sm text-gray-500 mb-6">

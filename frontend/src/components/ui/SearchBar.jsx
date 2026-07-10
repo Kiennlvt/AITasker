@@ -35,7 +35,7 @@ export default function SearchBar() {
       <Search className="text-gray-400 flex-shrink-0" size={18} />
       <input
         type="text"
-        placeholder="Search for AI services..."
+        placeholder="Search by title or categories . . ."
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
         /* 🌟 ĐÃ KHỬ VIỀN VUÔNG: outline-none border-none p-0 focus:ring-0 triệt tiêu hoàn toàn khung vuông thô mặc định */

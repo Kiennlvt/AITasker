@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import {
   CircleHelp,
   LogOut,
@@ -6,10 +7,12 @@ import {
   Star,
   UserCircle2,
   ShoppingBag,
+  ChevronDown,
 } from "lucide-react";
 import { NavLink, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import logo from "../../assets/images/logo01.png";
 import useAuthStore from "../../store/authStore";
+import useCategories from "../../hooks/useCategories";
 
 const THEME_STYLES = {
   orange: {
@@ -24,15 +27,9 @@ const DEFAULT_MENU_ITEMS = [
   { name: "Dashboard",   icon: <BriefcaseBusiness size={20} />, path: "/dashboard" },
 ];
 
-const CATEGORIES = [
-  "NLP & LLMs",
-  "Computer Vision",
-  "Data Engineering",
-  "AI Chatbot",
-  "Other",
-];
-
 const MAX_PRICE = 20000;
+const INITIAL_CATEGORY_COUNT = 4;
+const CATEGORY_STEP = 5;
 
 export default function SidebarMarketplace({
   theme = "orange",
@@ -40,11 +37,25 @@ export default function SidebarMarketplace({
   menuItems,
 }) {
   const activeTheme = THEME_STYLES[theme] || THEME_STYLES.orange;
+  const { categories } = useCategories();
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const items = menuItems || DEFAULT_MENU_ITEMS;
+
+  const [visibleCategoryCount, setVisibleCategoryCount] = useState(INITIAL_CATEGORY_COUNT);
+
+  const popularCategories = useMemo(
+    () =>
+      [...categories].sort(
+        (a, b) =>
+          (b.serviceCount || 0) + (b.jobCount || 0) - ((a.serviceCount || 0) + (a.jobCount || 0))
+      ),
+    [categories]
+  );
+  const visibleCategories = popularCategories.slice(0, visibleCategoryCount);
+  const hasMoreCategories = visibleCategoryCount < popularCategories.length;
 
   const selectedCategories = searchParams.getAll("category");
   const maxPrice = Number(searchParams.get("maxPrice") || MAX_PRICE);
@@ -81,7 +92,7 @@ export default function SidebarMarketplace({
       if (val >= MAX_PRICE) p.delete("maxPrice");
       else p.set("maxPrice", val);
     });
-  }
+}
 
   // 🌟 ĐÃ ĐỔI: Hàm cập nhật đẩy đúng từ khóa 'rating' lên URL tương thích với Services.jsx
   function handleRatingChange(val) {
@@ -137,18 +148,28 @@ export default function SidebarMarketplace({
             Categories
           </h4>
           <div className="space-y-3">
-            {CATEGORIES.map((cat) => (
-              <label key={cat} className="flex items-center gap-3 text-sm text-slate-500 cursor-pointer">
+            {visibleCategories.map((c) => (
+              <label key={c.id} className="flex items-center gap-3 text-sm text-slate-500 cursor-pointer">
                 <input
                   type="checkbox"
                   className="accent-orange-500"
-                  checked={selectedCategories.includes(cat)}
-                  onChange={() => toggleCategory(cat)}
+                  checked={selectedCategories.includes(c.name)}
+                  onChange={() => toggleCategory(c.name)}
                 />
-                {cat}
+                {c.name}
               </label>
             ))}
           </div>
+
+          {hasMoreCategories && (
+            <button
+              type="button"
+              onClick={() => setVisibleCategoryCount((n) => n + CATEGORY_STEP)}
+              className="mt-3 flex items-center gap-1 text-xs font-semibold text-orange-500 hover:text-orange-600"
+            >
+              Show more <ChevronDown size={14} />
+            </button>
+          )}
         </div>
 
         {/* PRICE RANGE */}
@@ -159,7 +180,7 @@ export default function SidebarMarketplace({
           <input
             type="range"
             min={100}
-            max={MAX_PRICE}
+max={MAX_PRICE}
             step={100}
             value={maxPrice}
             onChange={handlePriceChange}
