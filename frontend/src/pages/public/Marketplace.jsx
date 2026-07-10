@@ -35,7 +35,8 @@ export default function Marketplace() {
   const dropdownRef = useRef(null);
   const [searchParams] = useSearchParams();
   const selectedCategories = searchParams.getAll("category");
-  const maxPrice = Number(searchParams.get("maxPrice") || 10000);
+  const maxPriceParam = searchParams.get("maxPrice");
+  const maxPrice = maxPriceParam ? Number(maxPriceParam) : Infinity;
 
   useEffect(() => {
     const handler = (e) => {
@@ -80,8 +81,7 @@ export default function Marketplace() {
               computer vision, data engineering, and more.
             </p>
           </div>
-
-          <div className="relative" ref={dropdownRef}>
+<div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setOpen((v) => !v)}
               className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 shadow-sm hover:border-orange-300 hover:text-orange-600 transition-all"
@@ -150,7 +150,7 @@ export default function Marketplace() {
                   }`}
                 >
                   {i + 1}
-                </button>
+</button>
               ))}
               {totalPages > 12 && <span className="text-slate-500">...</span>}
             </div>
