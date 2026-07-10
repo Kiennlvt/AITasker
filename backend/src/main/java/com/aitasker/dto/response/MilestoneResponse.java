@@ -16,6 +16,8 @@ public class MilestoneResponse {
     private LocalDate dueDate;
     private String deliverableNote;
     private String revisionNote;
+    private LocalDate revisionDueDate;
+    private Integer revisionCount;
     private List<String> attachmentUrls;
     private MilestoneStatus status;
 }

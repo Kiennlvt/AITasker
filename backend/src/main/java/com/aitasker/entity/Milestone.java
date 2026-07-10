@@ -37,6 +37,11 @@ public class Milestone {
     @Column(columnDefinition = "TEXT")
     private String revisionNote;
 
+    private LocalDate revisionDueDate;
+
+    @Builder.Default
+    private Integer revisionCount = 0;
+
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private MilestoneStatus status = MilestoneStatus.PENDING;
