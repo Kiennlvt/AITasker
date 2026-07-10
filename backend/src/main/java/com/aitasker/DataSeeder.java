@@ -23,6 +23,7 @@ public class DataSeeder implements CommandLineRunner {
     private final UserRepository userRepo;
     private final JobPostRepository jobRepo;
     private final ServiceRepository serviceRepo;
+    private final CategoryRepository categoryRepo;
     private final ProposalRepository proposalRepo;
     private final ProjectRepository projectRepo;
     private final MilestoneRepository milestoneRepo;
@@ -40,6 +41,11 @@ public class DataSeeder implements CommandLineRunner {
         log.info("Seeding database...");
 
         String pass = passwordEncoder.encode("123456");
+
+        // ─── CATEGORIES ──────────────────────────────────────────────────────
+        List.of("NLP & LLMs", "Computer Vision", "Data Engineering", "MLOps",
+                        "Reinforcement Learning", "AI Chatbot", "Automation", "Other")
+                .forEach(name -> categoryRepo.save(Category.builder().name(name).build()));
 
         // ─── ADMIN ───────────────────────────────────────────────────────────
         userRepo.save(User.builder()
@@ -138,84 +144,84 @@ public class DataSeeder implements CommandLineRunner {
         serviceRepo.save(Service.builder().expert(e1)
                 .title("NLP Chatbot with LangChain & RAG")
                 .description("Production-grade chatbot using LangChain, OpenAI/Gemini, and a vector database (Chroma/Pinecone). Includes RAG pipeline, memory management, and API endpoint.")
-                .price(1800.0).deliveryDays(14).category("NLP")
+                .price(1800.0).deliveryDays(14).category("NLP & LLMs")
                 .imageUrl("https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=600")
                 .tags(List.of("chatbot", "langchain", "rag", "openai")).build());
 
         serviceRepo.save(Service.builder().expert(e1)
                 .title("Vietnamese NLP & Text Classification")
                 .description("Custom Vietnamese NLP models: sentiment analysis, topic classification, named entity recognition. Trained on 10M+ Vietnamese tokens.")
-                .price(900.0).deliveryDays(10).category("NLP")
+                .price(900.0).deliveryDays(10).category("NLP & LLMs")
                 .imageUrl("https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=600")
                 .tags(List.of("vietnamese", "sentiment", "ner", "nlp")).build());
 
         serviceRepo.save(Service.builder().expert(e2)
                 .title("End-to-End MLOps Pipeline")
                 .description("Full MLOps setup: experiment tracking (MLflow), model registry, CI/CD (GitHub Actions + ArgoCD), monitoring (Prometheus + Grafana), auto-retraining.")
-                .price(3500.0).deliveryDays(21).category("ML_OPS")
+                .price(3500.0).deliveryDays(21).category("MLOps")
                 .imageUrl("https://images.unsplash.com/photo-1518770660439-4636190af475?w=600")
                 .tags(List.of("mlops", "docker", "kubernetes", "mlflow", "cicd")).build());
 
         serviceRepo.save(Service.builder().expert(e2)
                 .title("Model Monitoring & Drift Detection")
                 .description("Setup real-time monitoring for deployed ML models: data drift, concept drift, feature importance shifts. Automated alerting and retraining triggers.")
-                .price(1400.0).deliveryDays(10).category("ML_OPS")
+                .price(1400.0).deliveryDays(10).category("MLOps")
                 .imageUrl("https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600")
                 .tags(List.of("monitoring", "drift", "evidently", "prometheus")).build());
 
         serviceRepo.save(Service.builder().expert(e3)
                 .title("Custom Object Detection Model")
                 .description("Train and deploy custom object detection using YOLOv8 or Detectron2. Includes data annotation guide, training, evaluation, and ONNX export for edge deployment.")
-                .price(2800.0).deliveryDays(18).category("COMPUTER_VISION")
+                .price(2800.0).deliveryDays(18).category("Computer Vision")
                 .imageUrl("https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=600")
                 .tags(List.of("yolo", "object-detection", "pytorch", "onnx")).build());
 
         serviceRepo.save(Service.builder().expert(e3)
                 .title("Medical Image Segmentation")
                 .description("Semantic & instance segmentation for medical imaging (CT, MRI, X-ray) using U-Net variants and SAM. FDA-compliant pipeline documentation included.")
-                .price(4000.0).deliveryDays(25).category("COMPUTER_VISION")
+                .price(4000.0).deliveryDays(25).category("Computer Vision")
                 .imageUrl("https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=600")
                 .tags(List.of("segmentation", "medical-ai", "unet", "pytorch")).build());
 
         serviceRepo.save(Service.builder().expert(e4)
                 .title("Real-Time Data Pipeline (Kafka + Spark)")
                 .description("Design and build a production-grade streaming data pipeline: Kafka ingestion, Spark Streaming processing, data lake storage, and dashboarding.")
-                .price(4500.0).deliveryDays(28).category("DATA_ENGINEERING")
+                .price(4500.0).deliveryDays(28).category("Data Engineering")
                 .imageUrl("https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600")
                 .tags(List.of("kafka", "spark", "streaming", "data-lake")).build());
 
         serviceRepo.save(Service.builder().expert(e4)
                 .title("Data Warehouse & dbt Modeling")
                 .description("Architect and implement a modern data warehouse on Snowflake/BigQuery with dbt transformation models, data quality tests, and BI-ready semantic layer.")
-                .price(2200.0).deliveryDays(14).category("DATA_ENGINEERING")
+                .price(2200.0).deliveryDays(14).category("Data Engineering")
                 .imageUrl("https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600")
                 .tags(List.of("snowflake", "dbt", "data-warehouse", "analytics")).build());
 
         serviceRepo.save(Service.builder().expert(e5)
                 .title("LLM Fine-Tuning with LoRA/QLoRA")
                 .description("Fine-tune any open-source LLM (LLaMA, Mistral, Qwen) on your custom dataset using LoRA/QLoRA. Includes dataset formatting, training, evaluation, and deployment via vLLM.")
-                .price(5000.0).deliveryDays(21).category("LLM")
+                .price(5000.0).deliveryDays(21).category("NLP & LLMs")
                 .imageUrl("https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=600")
                 .tags(List.of("llm", "lora", "finetuning", "llama", "mistral")).build());
 
         serviceRepo.save(Service.builder().expert(e5)
                 .title("RLHF & DPO Alignment Training")
                 .description("Align your LLM with human preferences using RLHF or Direct Preference Optimization (DPO). Includes reward model training and policy optimisation.")
-                .price(7000.0).deliveryDays(30).category("LLM")
+                .price(7000.0).deliveryDays(30).category("NLP & LLMs")
                 .imageUrl("https://images.unsplash.com/photo-1655720828018-edd2daec9349?w=600")
                 .tags(List.of("rlhf", "dpo", "alignment", "llm")).build());
 
         serviceRepo.save(Service.builder().expert(e6)
                 .title("Recommendation System (Collaborative + Content)")
                 .description("Hybrid recommendation engine combining collaborative filtering and content-based methods. Includes A/B test framework and real-time serving API.")
-                .price(2000.0).deliveryDays(16).category("ML_OPS")
+                .price(2000.0).deliveryDays(16).category("MLOps")
                 .imageUrl("https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?w=600")
                 .tags(List.of("recommender", "collaborative-filtering", "fastapi")).build());
 
         serviceRepo.save(Service.builder().expert(e6)
                 .title("Data Analysis & Insight Dashboard")
                 .description("End-to-end data analysis: EDA, statistical modelling, and interactive Tableau/Metabase dashboard. Deliverable includes full report and automated data refresh pipeline.")
-                .price(1000.0).deliveryDays(7).category("DATA_ENGINEERING")
+                .price(1000.0).deliveryDays(7).category("Data Engineering")
                 .imageUrl("https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600")
                 .tags(List.of("data-analysis", "tableau", "statistics", "eda")).build());
 
@@ -223,61 +229,61 @@ public class DataSeeder implements CommandLineRunner {
         JobPost job1 = jobRepo.save(JobPost.builder().client(c1)
                 .title("Build NLP Chatbot for Customer Support")
                 .description("Need an expert to build a chatbot using LangChain and OpenAI for our e-commerce platform. Bot should handle FAQs, order tracking, and escalate complex issues to human agents. Expected 10k+ daily queries.")
-                .budget(3000.0).deadline(LocalDate.now().plusDays(30))
+                .budget(3000.0).deadline(LocalDate.now().plusDays(30)).category("NLP & LLMs")
                 .skills(List.of("NLP", "LangChain", "Python", "OpenAI")).build());
 
         JobPost job2 = jobRepo.save(JobPost.builder().client(c1)
                 .title("Sentiment Analysis Model for Vietnamese Product Reviews")
                 .description("Develop a sentiment analysis model classifying reviews as positive/negative/neutral in Vietnamese. Train on our internal dataset of 50k reviews. REST API endpoint required.")
-                .budget(1500.0).deadline(LocalDate.now().plusDays(21))
+                .budget(1500.0).deadline(LocalDate.now().plusDays(21)).category("NLP & LLMs")
                 .skills(List.of("NLP", "Python", "TensorFlow", "Vietnamese")).build());
 
         JobPost job3 = jobRepo.save(JobPost.builder().client(c2)
                 .title("Setup MLOps Pipeline with CI/CD & Monitoring")
                 .description("Complete MLOps infrastructure: model versioning, automated testing, deployment pipeline using Docker + Kubernetes on AWS EKS. Include Prometheus monitoring and Grafana dashboards.")
-                .budget(5000.0).deadline(LocalDate.now().plusDays(45))
+                .budget(5000.0).deadline(LocalDate.now().plusDays(45)).category("MLOps")
                 .skills(List.of("MLOps", "Docker", "Kubernetes", "MLflow", "AWS")).build());
 
         JobPost job4 = jobRepo.save(JobPost.builder().client(c2)
                 .title("Defect Detection System for PCB Manufacturing")
                 .description("Computer vision system to detect micro-defects in PCB boards using a high-resolution camera feed. Target accuracy > 99%. Need real-time inference < 200ms per frame.")
-                .budget(4500.0).deadline(LocalDate.now().plusDays(60))
+                .budget(4500.0).deadline(LocalDate.now().plusDays(60)).category("Computer Vision")
                 .skills(List.of("Computer Vision", "YOLO", "PyTorch", "ONNX")).build());
 
         JobPost job5 = jobRepo.save(JobPost.builder().client(c1)
                 .title("Fine-Tune LLM for Vietnamese Legal Document Analysis")
                 .description("Fine-tune a Vietnamese LLM (PhoGPT or Vistral) on 50k legal documents for clause extraction, summarisation, and risk detection. Benchmark against current human review process.")
-                .budget(8000.0).deadline(LocalDate.now().plusDays(90))
+                .budget(8000.0).deadline(LocalDate.now().plusDays(90)).category("NLP & LLMs")
                 .skills(List.of("LLM", "Fine-tuning", "Python", "HuggingFace")).build());
 
         JobPost job6 = jobRepo.save(JobPost.builder().client(c3)
                 .title("Patient Risk Stratification ML Model")
                 .description("Build a risk stratification model for early detection of high-risk patients using EHR data. Must comply with HIPAA and handle class imbalance in the dataset.")
-                .budget(6000.0).deadline(LocalDate.now().plusDays(75))
+                .budget(6000.0).deadline(LocalDate.now().plusDays(75)).category("Other")
                 .skills(List.of("Machine Learning", "Python", "Healthcare AI", "HIPAA")).build());
 
         JobPost job7 = jobRepo.save(JobPost.builder().client(c3)
                 .title("Medical Image Segmentation for Tumour Detection")
                 .description("Segment and classify tumour regions in MRI scans using deep learning. Dataset: 5,000 annotated MRI images. Output should include model weights and evaluation report.")
-                .budget(7500.0).deadline(LocalDate.now().plusDays(80))
+                .budget(7500.0).deadline(LocalDate.now().plusDays(80)).category("Computer Vision")
                 .skills(List.of("Computer Vision", "U-Net", "PyTorch", "Medical Imaging")).build());
 
         JobPost job8 = jobRepo.save(JobPost.builder().client(c4)
                 .title("Real-Time Transaction Fraud Detection Pipeline")
                 .description("Build a streaming fraud detection system processing 100k+ transactions/second. Feature engineering on Kafka stream + XGBoost/LightGBM model inference. P99 latency < 50ms.")
-                .budget(9000.0).deadline(LocalDate.now().plusDays(50))
+                .budget(9000.0).deadline(LocalDate.now().plusDays(50)).category("Data Engineering")
                 .skills(List.of("Kafka", "Spark", "Python", "Feature Engineering", "XGBoost")).build());
 
         JobPost job9 = jobRepo.save(JobPost.builder().client(c4)
                 .title("Modern Data Warehouse Migration to Snowflake")
                 .description("Migrate legacy Oracle DWH to Snowflake. Build dbt transformation models for 200+ tables. Setup incremental loads, data quality tests, and BI dashboard in Metabase.")
-                .budget(4000.0).deadline(LocalDate.now().plusDays(40))
+                .budget(4000.0).deadline(LocalDate.now().plusDays(40)).category("Data Engineering")
                 .skills(List.of("Snowflake", "dbt", "SQL", "Data Engineering")).build());
 
         JobPost job10 = jobRepo.save(JobPost.builder().client(c1)
                 .title("Recommendation Engine for E-Commerce Platform")
                 .description("Hybrid recommendation system (collaborative + content-based) for 2M+ products. Personalised homepage, similar items, and 'customers also viewed' sections. Real-time serving API.")
-                .budget(3500.0).deadline(LocalDate.now().plusDays(35))
+                .budget(3500.0).deadline(LocalDate.now().plusDays(35)).category("Other")
                 .skills(List.of("Recommendation", "Python", "Spark", "FastAPI")).build());
 
         // ─── PROPOSALS ───────────────────────────────────────────────────────
