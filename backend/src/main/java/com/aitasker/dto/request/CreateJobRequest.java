@@ -14,6 +14,7 @@ public class CreateJobRequest {
     private String description;
     private Double budget;
     private LocalDate deadline;
+    private String category;
     private List<String> skills;
     private boolean draft;
 }

@@ -18,6 +18,7 @@ public class JobResponse {
     private String description;
     private Double budget;
     private LocalDate deadline;
+    private String category;
     private List<String> skills;
     private JobStatus status;
     private int proposalCount;

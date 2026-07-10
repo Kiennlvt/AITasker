@@ -13,4 +13,5 @@ public interface ServiceRepository extends JpaRepository<Service, String> {
     Page<Service> findByIsActiveTrue(Pageable pageable);
     Page<Service> findByCategoryAndIsActiveTrue(String category, Pageable pageable);
     List<Service> findByExpertIdOrderByCreatedAtDesc(String expertId);
+    long countByCategoryIgnoreCase(String category);
 }
