@@ -2,11 +2,11 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { createService } from "../../api/services";
-
-const CATEGORIES = ["NLP & LLMs", "Computer Vision", "Data Engineering", "Reinforcement Learning", "Other"];
+import useCategories from "../../hooks/useCategories";
 
 export default function PostService() {
   const navigate = useNavigate();
+  const { categories } = useCategories();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     title: "",
@@ -105,8 +105,8 @@ Description <span className="text-red-500">*</span>
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition-colors bg-white"
               >
                 <option value="">Select category</option>
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
                 ))}
               </select>
             </div>
