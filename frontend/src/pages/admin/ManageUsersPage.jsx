@@ -30,7 +30,7 @@ export default function ManageUsersPage() {
     <div className="space-y-8">
       <div className="flex flex-col">
         <h2 className="text-3xl font-black text-slate-800">User Management</h2>
-        <p className="mt-1 text-sm font-bold text-slate-400">Danh sách tài khoản Client và AI Expert trên hệ thống.</p>
+        <p className="mt-1 text-sm font-bold text-slate-400">List of Client and AI Expert accounts on the system.</p>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">

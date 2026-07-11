@@ -46,7 +46,7 @@ export default function ManageJobsPage() {
     <div className="space-y-8">
       <div className="flex flex-col">
         <h2 className="text-3xl font-black text-slate-800">Content Management</h2>
-        <p className="mt-1 text-sm font-bold text-slate-400">Danh sách quản lý và phê duyệt bài đăng công việc trên hệ thống.</p>
+        <p className="mt-1 text-sm font-bold text-slate-400">List of jobs managed and approved on the system.</p>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
