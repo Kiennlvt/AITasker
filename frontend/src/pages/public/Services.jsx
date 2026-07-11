@@ -4,15 +4,13 @@ import { useSearchParams } from "react-router-dom";
 import ServiceCard from "../../components/common/ServiceCard";
 import FeaturedServiceCard from "../../components/common/FeaturedServiceCard";
 import { getServices } from "../../api/services";
+import useCategories from "../../hooks/useCategories";
 
-const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=800";
 const PAGE_SIZE = 12;
 
-const MAIN_CATEGORIES = ["NLP & LLMs", "Computer Vision", "Data Engineering", "Reinforcement Learning"];
-
-function matchesCategory(tags, cat) {
+function matchesCategory(tags, cat, mainCategories) {
   if (cat === "Other") {
-    return !MAIN_CATEGORIES.some((mc) =>
+    return !mainCategories.some((mc) =>
       tags.some((t) => t.toLowerCase().includes(mc.toLowerCase()))
     );
   }
@@ -40,13 +38,15 @@ function toCardShape(svc, index) {
     title: svc.title || svc.name || "AI Service",
     author: svc.expertName || svc.author || "Unknown Expert",
     rating: Number(rawRating).toFixed(1), 
-    image: svc.imageUrl || FALLBACK_IMAGE,
+    image: svc.imageUrl || null,
     price: typeof svc.price === "number" ? `$${svc.price.toLocaleString()}` : (svc.price || "$2,500"),
     tags: svc.tags && svc.tags.length > 0 ? svc.tags : ["AI Expert"],
   };
 }
 
 export default function Services() {
+  const { categories: allCategories } = useCategories();
+  const mainCategories = allCategories.filter((c) => c.name !== "Other").map((c) => c.name);
   const [services, setServices] = useState([]);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -84,11 +84,10 @@ export default function Services() {
   if (ratingType) {
     params.rating = ratingType;
   }
-
-    getServices(page, PAGE_SIZE, sort.value, ratingType) 
+getServices(page, PAGE_SIZE, sort.value, ratingType) 
     .then((data) => {
       setServices(data.content ?? []);
-      setTotalPages(data.totalPages ?? 1);
+setTotalPages(data.totalPages ?? 1);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -104,14 +103,15 @@ export default function Services() {
   const allCards = services.map((svc, idx) => toCardShape(svc, idx));
   
   const cards = allCards.filter((card) => {
-    // 1. Lọc từ khóa tìm kiếm
-    const matchesSearch = !searchTxt || 
+    // 1. Lọc từ khóa tìm kiếm (theo tên hoặc category/tags)
+    const matchesSearch = !searchTxt ||
       card.title.toLowerCase().includes(searchTxt.toLowerCase()) ||
-      card.author.toLowerCase().includes(searchTxt.toLowerCase());
+      card.author.toLowerCase().includes(searchTxt.toLowerCase()) ||
+      (card.tags ?? []).some((t) => t.toLowerCase().includes(searchTxt.toLowerCase()));
 
     // 2. Lọc theo danh mục
     const catOk = selectedCategories.length === 0 ||
-      selectedCategories.some((cat) => matchesCategory(card.tags ?? [], cat));
+      selectedCategories.some((cat) => matchesCategory(card.tags ?? [], cat, mainCategories));
     
     // 3. Lọc khoảng giá tiền
     const priceValue = Number(String(card.price).replace(/[$,]/g, ""));
@@ -162,11 +162,11 @@ export default function Services() {
             </button>
 
             {open && (
-              <div className="absolute right-0 top-full mt-2 z-50 min-w-[210px] rounded-2xl border border-slate-100 bg-white py-2 shadow-xl">
+<div className="absolute right-0 top-full mt-2 z-50 min-w-[210px] rounded-2xl border border-slate-100 bg-white py-2 shadow-xl">
                 {SORT_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
-                    onClick={() => handleSort(opt)}
+onClick={() => handleSort(opt)}
                     className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition-colors hover:bg-orange-50 ${
                       sort.value === opt.value
                         ? "font-bold text-orange-500"

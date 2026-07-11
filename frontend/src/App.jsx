@@ -36,6 +36,7 @@ import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import ManageUsersPage from "./pages/admin/ManageUsersPage";
 import ManageJobsPage from "./pages/admin/ManageJobsPage";
 import ManageDisputesPage from "./pages/admin/ManageDisputesPage";
+import ManageCategoriesPage from "./pages/admin/ManageCategoriesPage";
 import StatisticsPage from "./pages/admin/StatisticsPage";
 import SavedServices from "./pages/client/SavedService";
 import SavedJobs from "./pages/expert/SavedJobs";
@@ -57,7 +58,7 @@ export default function App() {
           <Route index element={<LoginPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+<Route path="/forgot-password" element={<ForgotPasswordPage />} />
         </Route>
 
         <Route element={<PublicLayout />}>
@@ -109,6 +110,7 @@ export default function App() {
           <Route path="dashboard" element={<AdminDashboardPage />} />
           <Route path="users" element={<ManageUsersPage />} />
           <Route path="jobs" element={<ManageJobsPage />} />
+          <Route path="categories" element={<ManageCategoriesPage />} />
           <Route path="statistics" element={<StatisticsPage />} />
           <Route path="disputes" element={<ManageDisputesPage />} />
         </Route>

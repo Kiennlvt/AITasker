@@ -61,6 +61,7 @@ public class JobServiceImpl implements JobService {
                 .description(request.getDescription() != null ? request.getDescription() : "")
                 .budget(request.getBudget() != null ? request.getBudget() : 0.0)
                 .deadline(request.getDeadline())
+                .category(request.getCategory())
                 .skills(request.getSkills())
                 .status(request.isDraft() ? JobStatus.DRAFT : JobStatus.OPEN)
                 .build();
@@ -83,6 +84,7 @@ public class JobServiceImpl implements JobService {
         job.setDescription(request.getDescription());
         job.setBudget(request.getBudget());
         job.setDeadline(request.getDeadline());
+        job.setCategory(request.getCategory());
         job.setSkills(request.getSkills());
 
         return toResponse(jobRepo.save(job));
@@ -164,6 +166,7 @@ public class JobServiceImpl implements JobService {
                 .description(job.getDescription())
                 .budget(job.getBudget())
                 .deadline(job.getDeadline())
+                .category(job.getCategory())
                 .skills(job.getSkills())
                 .status(job.getStatus())
                 .proposalCount(proposalRepo.countByJobId(job.getId()))

@@ -64,7 +64,7 @@ export default function MyTask() {
   const handleSelectProject = (project) => {
     setSelectedProject(project);
     setMilestonesLoading(true);
-    setAlreadyReviewed(false);
+setAlreadyReviewed(false);
     getMilestones(project.id)
       .then(setMilestones)
       .catch(() => toast.error("Failed to load milestones"))
@@ -159,7 +159,7 @@ export default function MyTask() {
       setShowAddMilestone(false);
       toast.success("Milestone added!");
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to create milestone");
+toast.error(err.response?.data?.message || "Failed to create milestone");
     } finally {
       setCreatingMilestone(false);
     }
@@ -234,7 +234,7 @@ export default function MyTask() {
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
-                      <span className={`px-3 py-0.5 rounded-full text-[11px] font-bold ${badge.cls}`}>
+<span className={`px-3 py-0.5 rounded-full text-[11px] font-bold ${badge.cls}`}>
                         {badge.label}
                       </span>
                       {isOverdue && (
@@ -302,7 +302,7 @@ export default function MyTask() {
         {selectedProject.totalBudget != null && (
           <div className="text-right shrink-0">
             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Project Price</p>
-            <p className="text-2xl font-bold text-orange-500">${selectedProject.totalBudget.toLocaleString()}</p>
+<p className="text-2xl font-bold text-orange-500">${selectedProject.totalBudget.toLocaleString()}</p>
           </div>
         )}
       </div>
@@ -358,7 +358,7 @@ export default function MyTask() {
                     value={newMilestone.amount}
                     onChange={(e) => setNewMilestone((p) => ({ ...p, amount: e.target.value }))}
                     placeholder="Amount ($)"
-                    className="flex-1 p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-orange-400"
+className="flex-1 p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-orange-400"
                   />
                   <input
                     type="date"
@@ -392,9 +392,13 @@ export default function MyTask() {
             <div className="space-y-8 relative before:absolute before:left-[15px] before:top-2 before:bottom-2 before:w-[2px] before:bg-gray-100">
               {milestones.map((milestone, idx) => {
                 const ui = milestoneUi(milestone.status);
+                const isRevision = milestone.status === "REVISION_REQUESTED";
+                const effectiveDueDate = isRevision && milestone.revisionDueDate
+                  ? milestone.revisionDueDate
+                  : milestone.dueDate;
                 const isPastDue =
-                  milestone.dueDate &&
-                  new Date(milestone.dueDate) < new Date() &&
+                  effectiveDueDate &&
+                  new Date(effectiveDueDate) < new Date() &&
                   milestone.status !== "APPROVED" &&
                   milestone.status !== "SUBMITTED";
                 const canSubmit =
@@ -410,7 +414,7 @@ export default function MyTask() {
                           <CheckCircle2 size={18} />
                         </div>
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-white border-2 border-orange-500 text-orange-500 flex items-center justify-center">
+<div className="w-8 h-8 rounded-full bg-white border-2 border-orange-500 text-orange-500 flex items-center justify-center">
                           <Clock size={18} />
                         </div>
                       )}
@@ -440,9 +444,9 @@ export default function MyTask() {
                           <div>
                             <h4 className="font-bold text-orange-600">{milestone.title}</h4>
                             <p className="text-sm text-gray-500 mt-1">{milestone.description}</p>
-                            {milestone.dueDate && (
+                            {effectiveDueDate && (
                               <span className={`text-[10px] font-bold block mt-2 ${isPastDue ? "text-red-500" : "text-gray-400"}`}>
-                                Due: {new Date(milestone.dueDate).toLocaleDateString()}
+                                {isRevision && milestone.revisionDueDate ? "Revision due" : "Due"}: {new Date(effectiveDueDate).toLocaleDateString()}
                                 {isPastDue && " — Overdue!"}
                               </span>
                             )}
@@ -458,7 +462,7 @@ export default function MyTask() {
                                 ? "In review"
                                 : milestone.status === "REVISION_REQUESTED"
                                 ? "Revision requested"
-                                : "In progress"}
+: "In progress"}
                             </span>
                           </div>
                         </div>
@@ -466,6 +470,11 @@ export default function MyTask() {
                           <div className="mt-3 p-3 bg-amber-50 border border-amber-100 rounded-xl">
                             <p className="text-[11px] font-bold text-amber-600 uppercase mb-1">Client Revision Request</p>
                             <p className="text-xs text-gray-700 leading-relaxed">{milestone.revisionNote}</p>
+                            {milestone.revisionDueDate && (
+                              <p className="text-[11px] text-amber-600 font-semibold mt-1.5">
+                                Resubmit by: {new Date(milestone.revisionDueDate).toLocaleDateString()}
+                              </p>
+                            )}
                           </div>
                         )}
                         {canSubmit && (
@@ -508,7 +517,7 @@ export default function MyTask() {
               <p className="text-sm font-bold text-gray-600">
                 {dragging ? "Drop files here" : "Drag & drop files here, or click to browse"}
               </p>
-              <p className="text-xs text-gray-400 mt-1">Supports PDF, ZIP, JSON (Max 5GB per file)</p>
+<p className="text-xs text-gray-400 mt-1">Supports PDF, ZIP, JSON (Max 5GB per file)</p>
             </div>
 
             <input
@@ -575,7 +584,7 @@ export default function MyTask() {
 
         {/* RIGHT: ESCROW + AUDIT */}
         <div className="space-y-8">
-          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+<div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
             <h3 className="font-bold text-[#15153d] mb-4">History & Audit</h3>
             <div className="space-y-4">
               {milestones
@@ -632,7 +641,7 @@ export default function MyTask() {
                 Rate Your Client
               </h3>
               {alreadyReviewed ? (
-                <div className="text-center py-4 text-sm text-emerald-600 font-semibold">
+<div className="text-center py-4 text-sm text-emerald-600 font-semibold">
                   ✅ You have already reviewed this project.
                 </div>
               ) : (

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Button from "@/components/ui/Button";
 import StepBar from "../../../components/ui/StepBar";
 import usePostJobStore from "../../../store/postJobStore";
+import useCategories from "../../../hooks/useCategories";
 
 export default function PostJob() {
   const navigate = useNavigate();
@@ -12,12 +13,17 @@ export default function PostJob() {
   if (path.includes("step-2")) currentStep = 2;
   if (path.includes("step-3")) currentStep = 3;
 
+  const { categories } = useCategories();
   const store = usePostJobStore();
   const [title, setTitle] = useState(store.title);
   const [category, setCategory] = useState(store.category);
   const [timelineAmount, setTimelineAmount] = useState(store.timelineAmount);
   const [timelineUnit, setTimelineUnit] = useState(store.timelineUnit);
   const [description, setDescription] = useState(store.description);
+
+  useEffect(() => {
+    if (!category && categories.length > 0) setCategory(categories[0].name);
+  }, [categories, category]);
 
   const handleNext = () => {
     store.updateStep1({ title, category, timelineAmount, timelineUnit, description });
@@ -52,10 +58,9 @@ export default function PostJob() {
               onChange={(e) => setCategory(e.target.value)}
               className="w-full h-[65px] px-5 rounded-2xl border border-gray-300 outline-none focus:border-orange-400"
             >
-              <option>Natural Language Processing</option>
-              <option>Computer Vision</option>
-              <option>Automation</option>
-              <option>AI Chatbot</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.name}>{c.name}</option>
+              ))}
             </select>
           </div>
 
@@ -66,7 +71,7 @@ export default function PostJob() {
                 type="number"
                 value={timelineAmount}
                 onChange={(e) => setTimelineAmount(e.target.value)}
-                placeholder="Enter number..."
+placeholder="Enter number..."
                 className="flex-1 h-[65px] px-5 rounded-2xl border border-gray-300 outline-none focus:border-orange-400"
               />
               <select

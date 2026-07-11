@@ -14,6 +14,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import java.util.List;
@@ -52,8 +53,9 @@ public class ProjectController {
     @PatchMapping("/milestones/{milestoneId}/revision")
     public ApiResponse<ProjectResponse> requestRevision(@AuthenticationPrincipal UserDetails user,
                                                          @PathVariable String milestoneId,
-                                                         @RequestParam String note) {
-        return ApiResponse.ok(projectService.requestRevision(user.getUsername(), milestoneId, note));
+                                                         @RequestParam String note,
+                                                         @RequestParam LocalDate revisionDueDate) {
+        return ApiResponse.ok(projectService.requestRevision(user.getUsername(), milestoneId, note, revisionDueDate));
     }
 
     @PatchMapping("/milestones/{milestoneId}/submit")

@@ -102,15 +102,19 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ProjectResponse requestRevision(String clientId, String milestoneId, String note) {
+    public ProjectResponse requestRevision(String clientId, String milestoneId, String note, LocalDate revisionDueDate) {
         Milestone ms = milestoneRepo.findById(milestoneId)
                 .orElseThrow(() -> AppException.notFound("Milestone not found"));
         if (!ms.getProject().getClient().getId().equals(clientId))
             throw AppException.forbidden("Not your project");
         if (ms.getStatus() != MilestoneStatus.SUBMITTED)
             throw AppException.badRequest("Can only request revision on a submitted milestone");
+        if (revisionDueDate == null || !revisionDueDate.isAfter(LocalDate.now()))
+            throw AppException.badRequest("Revision due date must be in the future");
         ms.setStatus(MilestoneStatus.REVISION_REQUESTED);
         ms.setRevisionNote(note);
+        ms.setRevisionDueDate(revisionDueDate);
+        ms.setRevisionCount((ms.getRevisionCount() != null ? ms.getRevisionCount() : 0) + 1);
         milestoneRepo.save(ms);
 
         notificationService.createNotification(
@@ -130,6 +134,10 @@ public class ProjectServiceImpl implements ProjectService {
                 .orElseThrow(() -> AppException.notFound("Milestone not found"));
         if (!ms.getProject().getExpert().getId().equals(expertId))
             throw AppException.forbidden("Not your project");
+        if (ms.getStatus() != MilestoneStatus.PENDING
+                && ms.getStatus() != MilestoneStatus.IN_PROGRESS
+                && ms.getStatus() != MilestoneStatus.REVISION_REQUESTED)
+            throw AppException.badRequest("Milestone cannot be submitted from status " + ms.getStatus());
         ms.setStatus(MilestoneStatus.SUBMITTED);
         ms.setDeliverableNote(note);
         milestoneRepo.save(ms);
@@ -269,6 +277,8 @@ public class ProjectServiceImpl implements ProjectService {
                 .dueDate(m.getDueDate())
                 .deliverableNote(m.getDeliverableNote())
                 .revisionNote(m.getRevisionNote())
+                .revisionDueDate(m.getRevisionDueDate())
+                .revisionCount(m.getRevisionCount())
                 .attachmentUrls(m.getAttachmentUrls())
                 .status(m.getStatus())
                 .build();

@@ -1,12 +1,12 @@
-import React, { useMemo } from "react";
+import React from "react";
 import Button from "../ui/Button";
 import Badge from "../ui/Badge";
 import { Link } from "react-router-dom";
 
 const techImages = [
   "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80",
-  "https://plus.unsplash.com/premium_photo-1726079247110-5e593660c7b2?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-  "https://plus.unsplash.com/premium_photo-1725985758331-e1b46919d8cf?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "https://plus.unsplash.com/premium_photo-1726079247110-5e593….0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "https://plus.unsplash.com/premium_photo-1725985758331-e1b46….0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
   "https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=600&q=80",
   "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80",
   "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=600&q=80",
@@ -18,21 +18,31 @@ const techImages = [
   "https://images.unsplash.com/photo-1504639725590-34d0984388bd?auto=format&fit=crop&w=600&q=80",
 ];
 
-export default function ServiceCard({ service }) {
-  const randomImage = useMemo(
-    () => techImages[Math.floor(Math.random() * techImages.length)],
-    []
-  );
+function getUniqueImage(title, author) {
+  const str = `${title || ""}${author || ""}`;
+  let hash = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = (hash * 16777619) >>> 0;
+  }
+  return techImages[hash % techImages.length];
+}
 
+export default function ServiceCard({ service }) {
   if (!service) return null;
+
+  const imageSrc = service.image || getUniqueImage(service.title, service.author);
 
   return (
     <div className="overflow-hidden rounded-[28px] bg-white shadow-[0_20px_40px_rgba(15,23,42,0.10)]">
       <div className="relative h-[155px]">
         <img
-          src={randomImage}
+          src={imageSrc}
           alt={service.title || "AI Service"}
           className="h-full w-full object-cover"
+          onError={(e) => {
+            e.target.src = techImages[0];
+          }}
         />
 
         <div className="absolute right-4 top-4 rounded-full bg-white px-3 py-1 text-[11px] font-black flex items-center gap-1 shadow-sm text-slate-800">
@@ -52,7 +62,7 @@ export default function ServiceCard({ service }) {
         </h3>
 
         <div className="mt-3 flex items-center gap-2">
-          <div className="h-7 w-7 rounded-full bg-slate-800" />
+<div className="h-7 w-7 rounded-full bg-slate-800" />
           <p className="text-xs text-slate-500">{service.author || "Expert"}</p>
           <span className="text-xs text-orange-500">●</span>
         </div>

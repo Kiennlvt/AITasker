@@ -32,6 +32,8 @@ public class JobPost {
 
     private LocalDate deadline;
 
+    private String category;
+
     @ElementCollection
     @CollectionTable(name = "job_skills", joinColumns = @JoinColumn(name = "job_id"))
     @Column(name = "skill")
