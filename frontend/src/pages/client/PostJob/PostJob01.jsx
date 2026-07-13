@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import Button from "@/components/ui/Button";
 import StepBar from "../../../components/ui/StepBar";
 import usePostJobStore from "../../../store/postJobStore";
@@ -21,11 +22,11 @@ export default function PostJob() {
   const [timelineUnit, setTimelineUnit] = useState(store.timelineUnit);
   const [description, setDescription] = useState(store.description);
 
-  useEffect(() => {
-    if (!category && categories.length > 0) setCategory(categories[0].name);
-  }, [categories, category]);
-
   const handleNext = () => {
+    if (!category) {
+      toast.error("Please select a category");
+      return;
+    }
     store.updateStep1({ title, category, timelineAmount, timelineUnit, description });
     navigate("/post-job/step-2");
   };
@@ -58,6 +59,7 @@ export default function PostJob() {
               onChange={(e) => setCategory(e.target.value)}
               className="w-full h-[65px] px-5 rounded-2xl border border-gray-300 outline-none focus:border-orange-400"
             >
+              <option value="" disabled>Select category</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.name}>{c.name}</option>
               ))}

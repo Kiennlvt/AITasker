@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { Share2, Terminal, ArrowLeft, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import MessagesIcon from "../../../components/ui/MesageIcon";
 import { getProjectById, getMilestones, approveMilestone, requestRevision } from "../../../api/projects";
+import { createReview } from "../../../api/reviews";
 import toast from "react-hot-toast";
 
 function milestoneUi(status) {
@@ -73,11 +74,14 @@ export default function ProjectDetailClient() {
   const handleApprove = async (milestoneId) => {
     setActionLoading(milestoneId + "-approve");
     try {
-      await approveMilestone(milestoneId);
-      setMilestones((prev) =>
-        prev.map((m) => (m.id === milestoneId ? { ...m, status: "APPROVED" } : m))
+      const updatedProject = await approveMilestone(milestoneId);
+      setProject(updatedProject);
+      setMilestones(updatedProject.milestones ?? []);
+      toast.success(
+        updatedProject.status === "COMPLETED"
+          ? "Milestone approved! Project completed 🎉"
+          : "Milestone approved!"
       );
-      toast.success("Milestone approved!");
     } catch {
       toast.error("Failed to approve milestone");
     } finally {
@@ -147,12 +151,6 @@ export default function ProjectDetailClient() {
               {s.label}
             </span>
           </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl font-semibold shadow-sm text-sm">
-            <Share2 size={16} /> Share
-          </button>
         </div>
       </div>
 
@@ -433,29 +431,19 @@ export default function ProjectDetailClient() {
                 onClick={async () => {
                   setSubmittingReview(true);
                   try {
-                    const payload = {
+                    await createReview({
                       projectId: project.id,
-                      expertId: project.expertId,
+                      receiverId: project.expertId,
                       rating: rating,
-                      comment: comment.trim()
-                    };
-
-                    const response = await fetch("http://localhost:8080/api/reviews", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify(payload)
+                      comment: comment.trim() || null
                     });
 
-                    if (response.ok) {
-                      toast.success("Thank you for your review!");
-                      setShowReviewModal(false);
-                      setComment("");
-                      setRating(0);
-                    } else {
-                      toast.error("Failed to submit review");
-                    }
+                    toast.success("Thank you for your review!");
+                    setShowReviewModal(false);
+                    setComment("");
+                    setRating(0);
                   } catch (err) {
-                    toast.error("Something went wrong!");
+                    toast.error(err?.response?.data?.message || "Failed to submit review");
                   } finally {
                     setSubmittingReview(false);
                   }

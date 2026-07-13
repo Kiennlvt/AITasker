@@ -97,7 +97,11 @@ export default function ManageProposals() {
       const activeJobs = updatedJobs.filter(job => job.status !== 'DRAFT');
       setJobs(activeJobs);
       setProposals((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, status: "ACCEPTED" } : p))
+        prev.map((p) => {
+          if (p.id === id) return { ...p, status: "ACCEPTED" };
+          if (p.status === "PENDING") return { ...p, status: "REJECTED" };
+          return p;
+        })
       );
       toast.success("Proposal accepted! The job is now in progress.");
       getProposalInsights(selectedJobId).then((data) => setInsight(data.insight)).catch(() => {});

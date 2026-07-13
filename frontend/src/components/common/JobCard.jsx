@@ -2,48 +2,37 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Users } from "lucide-react";
 import Badge from "../ui/Badge";
 
-// Danh sách 12 ảnh được lọc kỹ, tone sáng, tech/data/dashboard chuẩn gu nhóm ông
+// Ảnh nền cho job card: tone sáng, chủ đề tech/freelance, không trùng thumbnail giữa các ảnh
 const techImages = [
-  "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80", // Dashboard phân tích
-  "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80", // Laptop data
-  "https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?auto=format&fit=crop&w=600&q=80", // Biểu đồ đồ thị
-  "https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=600&q=80", // UI/UX thiết kế sáng
-  "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80", // Thao tác máy tính
-  "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=600&q=80", // Mạng lưới toàn cầu
-  "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80", // Vi mạch phần cứng
-  "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=600&q=80", // Không gian làm việc code
-  "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=600&q=80", // Hệ thống dữ liệu server
-  "https://images.unsplash.com/photo-1535378917042-10a22c95931a?auto=format&fit=crop&w=600&q=80", // Robot AI trừu tượng
+  "https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=600&q=80", // UI/UX thiết kế
+  "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=600&q=80", // Code trên màn hình
+  "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80", // Laptop & data
+  "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=600&q=80", // Teamwork bàn làm việc
+  "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=600&q=80", // Analytics dashboard
+  "https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7?auto=format&fit=crop&w=600&q=80", // Không gian làm việc code
+  "https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?auto=format&fit=crop&w=600&q=80", // Thiết bị công nghệ
+  "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=600&q=80", // Người viết code
+  "https://images.unsplash.com/photo-1553877522-43269d4ea984?auto=format&fit=crop&w=600&q=80", // Business meeting sáng
+  "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=600&q=80", // Bàn phím & màn hình
   "https://images.unsplash.com/photo-1581092921461-eab62e97a780?auto=format&fit=crop&w=600&q=80", // Kỹ sư công nghệ
-  "https://images.unsplash.com/photo-1504639725590-34d0984388bd?auto=format&fit=crop&w=600&q=80"  // Bàn phím máy tính sáng
+  "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&w=600&q=80"  // Không gian làm việc hiện đại
 ];
 
-export default function JobCard({ job }) {
-  // Hàm tạo số Hash độc nhất vô nhị từ Tiêu đề + Mô tả để triệt tiêu hoàn toàn tỷ lệ trùng lặp
-  const getAbsoluteUniqueImage = (title, desc) => {
-    const str = `${title || ""}${desc || ""}`;
-    let hash = 2166136261; // Số Prime của thuật toán FNV-1a
-    
-    for (let i = 0; i < str.length; i++) {
-      hash ^= str.charCodeAt(i);
-      hash = (hash * 16777619) >>> 0; // Nhân với FNV prime và ép về số nguyên dương 32-bit
-    }
-    
-    // Lấy chỉ số mảng ảnh bảo đảm phân tán cực đều, không bị dính chùm
-    const index = hash % techImages.length;
-    return techImages[index];
-  };
+const FALLBACK_IMAGE = techImages[0];
+
+export default function JobCard({ job, index = 0 }) {
+  // Gán ảnh theo vị trí trong danh sách để 2 card liền kề luôn khác ảnh nhau
+  const image = job.image || techImages[index % techImages.length];
 
   return (
     <div className="overflow-hidden rounded-[28px] bg-white shadow-[0_20px_40px_rgba(15,23,42,0.08)] flex flex-col">
       <div className="relative h-[155px]">
-        {/* Đã sửa: Ép thuật toán băm chuỗi FNV-1a, bẻ gãy hoàn toàn tình trạng trùng ảnh */}
-        <img 
-          src={job.image || getAbsoluteUniqueImage(job.title, job.description)} 
-          alt={job.title} 
-          className="h-full w-full object-cover" 
+        <img
+          src={image}
+          alt={job.title}
+          className="h-full w-full object-cover"
           onError={(e) => {
-            e.target.src = "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80";
+            e.target.src = FALLBACK_IMAGE;
           }}
         />
         

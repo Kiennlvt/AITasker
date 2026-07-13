@@ -68,7 +68,24 @@ public class ProjectServiceImpl implements ProjectService {
                 ms.getProject().getId()
         );
 
-        return toResponse(ms.getProject());
+        Project project = ms.getProject();
+        List<Milestone> allMilestones = project.getMilestones() != null ? project.getMilestones() : List.of();
+        boolean allApproved = !allMilestones.isEmpty()
+                && allMilestones.stream().allMatch(m -> m.getStatus() == MilestoneStatus.APPROVED);
+        if (allApproved && project.getStatus() != ProjectStatus.COMPLETED) {
+            project.setStatus(ProjectStatus.COMPLETED);
+            projectRepo.save(project);
+
+            notificationService.createNotification(
+                    project.getExpert(),
+                    "Project Completed! 🏆",
+                    "Project '" + project.getJob().getTitle() + "' has been marked as completed. Thank you for your work!",
+                    "PROJECT",
+                    project.getId()
+            );
+        }
+
+        return toResponse(project);
     }
 
     @Override

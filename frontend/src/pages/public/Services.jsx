@@ -192,15 +192,15 @@ onClick={() => handleSort(opt)}
 
         {!loading && cards.length > 0 && (
           <div className="grid grid-cols-4 gap-8">
-            {cards.slice(0, 4).map((svc) => (
-              <ServiceCard key={svc.id} service={svc} />
+            {cards.slice(0, 4).map((svc, i) => (
+              <ServiceCard key={svc.id} service={svc} index={i} />
             ))}
 
             {}
             {!searchTxt && !ratingType && <FeaturedServiceCard />}
 
-            {cards.slice(4).map((svc) => (
-              <ServiceCard key={svc.id} service={svc} />
+            {cards.slice(4).map((svc, i) => (
+              <ServiceCard key={svc.id} service={svc} index={i + 4} />
             ))}
           </div>
         )}

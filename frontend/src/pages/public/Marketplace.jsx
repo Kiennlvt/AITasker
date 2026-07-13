@@ -134,7 +134,7 @@ Browse open AI projects posted by clients. Find your next opportunity in LLM fin
             <p className="text-sm text-gray-400 py-8">No jobs match the current filters.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filtered.map((job) => <JobCard key={job.id} job={job} />)}
+              {filtered.map((job, i) => <JobCard key={job.id} job={job} index={i} />)}
             </div>
           );
         })()}
