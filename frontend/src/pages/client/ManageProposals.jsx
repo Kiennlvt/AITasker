@@ -6,6 +6,7 @@ import Button from "../../components/ui/Button";
 import { getMyJobs, deleteJob } from "../../api/jobs";
 import { getProposalsByJob, acceptProposal, rejectProposal } from "../../api/proposals";
 import { findOrCreateDirect } from "../../api/conversations";
+import { getWallet } from "../../api/wallet";
 import toast from "react-hot-toast";
 
 import usePostJobStore from "../../store/postJobStore";
@@ -30,6 +31,7 @@ export default function ManageProposals() {
   const [jobs, setJobs] = useState([]);
   const [selectedJobId, setSelectedJobId] = useState(null);
   const [proposals, setProposals] = useState([]);
+  const [wallet, setWallet] = useState(null);
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [loadingProposals, setLoadingProposals] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
@@ -62,6 +64,7 @@ export default function ManageProposals() {
       })
       .catch(() => toast.error("Failed to load jobs"))
       .finally(() => setLoadingJobs(false));
+    getWallet().then(setWallet).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -74,6 +77,12 @@ export default function ManageProposals() {
   }, [selectedJobId]);
 
   const handleAccept = async (id) => {
+    const requiredBudget = Number(selectedJob?.budget ?? 0);
+    if (wallet && wallet.balance < requiredBudget) {
+      toast.error("Insufficient wallet balance. Please deposit enough funds before creating a project.");
+      return;
+    }
+
     setActionLoading(id + "-accept");
     try {
       await acceptProposal(id);
@@ -84,9 +93,10 @@ export default function ManageProposals() {
       setProposals((prev) =>
         prev.map((p) => (p.id === id ? { ...p, status: "ACCEPTED" } : p))
       );
+      getWallet().then(setWallet).catch(() => {});
       toast.success("Proposal accepted! The job is now in progress.");
-    } catch {
-      toast.error("Failed to accept proposal");
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to accept proposal");
     } finally {
       setActionLoading(null);
     }
@@ -231,6 +241,14 @@ export default function ManageProposals() {
                     {selectedJob.timeline ?? "—"}
                   </span>
                 </span>
+                {wallet && (
+                  <span>
+                    👛 Your Balance:{" "}
+                    <span className={`font-bold ${wallet.balance < Number(selectedJob.budget ?? 0) ? "text-red-500" : "text-[#1a1a3c]"}`}>
+                      ${Number(wallet.balance ?? 0).toLocaleString()}
+                    </span>
+                  </span>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-3">

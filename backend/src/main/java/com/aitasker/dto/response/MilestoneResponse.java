@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data @Builder
@@ -18,4 +19,8 @@ public class MilestoneResponse {
     private String revisionNote;
     private List<String> attachmentUrls;
     private MilestoneStatus status;
+    private LocalDateTime submittedAt;
+    private LocalDateTime paidAt;
+    /** submittedAt + 5 days; the deadline after which an inactive client's approval auto-releases payment. */
+    private LocalDateTime reviewDeadline;
 }

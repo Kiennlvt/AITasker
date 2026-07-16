@@ -32,3 +32,6 @@ export const uploadMilestoneFiles = (milestoneId, files) => {
     headers: { 'Content-Type': undefined },
   }).then(r => r.data.data);
 };
+
+export const requestProjectCancellation = (projectId) =>
+  api.post(`/projects/${projectId}/cancel-request`).then(r => r.data.data);

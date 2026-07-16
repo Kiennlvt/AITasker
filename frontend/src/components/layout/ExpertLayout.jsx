@@ -6,6 +6,7 @@ import {
   BriefcaseBusiness,
   FileText,
   Bookmark,
+  Wallet,
 } from "lucide-react";
 import { Outlet } from "react-router-dom";
 import Header from "../ui/Header";
@@ -42,6 +43,11 @@ const menuItems = [
       name: "Saved Jobs",
       icon: <Bookmark size={20} />,
       path: "/saved-jobs",
+    },
+    {
+      name: "Wallet",
+      icon: <Wallet size={20} />,
+      path: "/wallet",
     },
     {
       name: "Messages",

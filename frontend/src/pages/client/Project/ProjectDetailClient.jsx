@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Share2, Terminal, ArrowLeft, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { Share2, Terminal, ArrowLeft, FileText, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
 import MessagesIcon from "../../../components/ui/MesageIcon";
-import { getProjectById, getMilestones, approveMilestone, requestRevision } from "../../../api/projects";
+import MilestoneCountdown from "../../../components/ui/MilestoneCountdown";
+import { getProjectById, getMilestones, approveMilestone, requestRevision, requestProjectCancellation } from "../../../api/projects";
 import toast from "react-hot-toast";
 
 function milestoneUi(status) {
   switch (status) {
     case "APPROVED":
+    case "PAID":
       return "completed";
     case "SUBMITTED":
       return "active";
@@ -39,10 +41,12 @@ export default function ProjectDetailClient() {
   const [actionLoading, setActionLoading] = useState(null);
   const [revisionNote, setRevisionNote] = useState({});   
   const [revisionOpen, setRevisionOpen] = useState(null); 
-  const [showReviewModal, setShowReviewModal] = useState(false); 
-  const [rating, setRating] = useState(0);                     
-  const [comment, setComment] = useState("");                   
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     Promise.all([getProjectById(id), getMilestones(id)])
@@ -85,6 +89,20 @@ export default function ProjectDetailClient() {
       toast.error("Failed to request revision");
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleCancelProject = async () => {
+    setCancelling(true);
+    try {
+      const updated = await requestProjectCancellation(project.id);
+      setProject(updated);
+      setShowCancelModal(false);
+      toast.success("Cancellation requested. The expert has been notified.");
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to request cancellation");
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -169,7 +187,7 @@ export default function ProjectDetailClient() {
                           </span>
                         ) : (
                           <span className="text-xs font-semibold text-gray-400">
-                            {uiStatus === "completed" ? "Approved" : "Pending"}
+                            {uiStatus === "completed" ? (milestone.status === "PAID" ? "Paid" : "Approved") : "Pending"}
                           </span>
                         )}
                       </div>
@@ -213,6 +231,20 @@ export default function ProjectDetailClient() {
                               </a>
                             );
                           })}
+                        </div>
+                      )}
+
+                      {milestone.status === "SUBMITTED" && milestone.reviewDeadline && (
+                        <div className="mt-3 flex items-start gap-2 p-3 bg-amber-50 border border-amber-100 rounded-xl">
+                          <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                          <p className="text-[11px] text-amber-700 leading-relaxed">
+                            <span className="font-bold">
+                              <MilestoneCountdown deadline={milestone.reviewDeadline} />
+                            </span>{" "}
+                            to review this submission. If you remain inactive until{" "}
+                            {new Date(milestone.reviewDeadline).toLocaleString()}, it will be automatically approved
+                            and the payment released to the expert.
+                          </p>
                         </div>
                       )}
 
@@ -307,6 +339,20 @@ export default function ProjectDetailClient() {
 
       <MessagesIcon />
 
+      {project.cancellationRequestedAt && (
+        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+          <AlertTriangle size={20} className="text-amber-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-amber-700">Cancellation requested — waiting for expert response</p>
+            <p className="text-xs text-amber-600 mt-1">
+              If the expert doesn't become active or submit a milestone by{" "}
+              {project.cancellationDeadline ? new Date(project.cancellationDeadline).toLocaleString() : "the deadline"},
+              the project will be automatically cancelled and the full escrow amount refunded to your wallet.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-4">
         <Link
           to="/projects"
@@ -323,7 +369,58 @@ export default function ProjectDetailClient() {
             Leave a Review
           </button>
         )}
+
+        {project.cancellationEligible && (
+          <button
+            onClick={() => setShowCancelModal(true)}
+            className="px-6 py-2.5 bg-white border border-red-200 text-red-500 hover:bg-red-50 rounded-xl text-sm font-bold shadow-sm transition-all"
+          >
+            Cancel Project
+          </button>
+        )}
       </div>
+
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[24px] p-8 max-w-md w-full shadow-xl relative border border-gray-100/50">
+            <button
+              onClick={() => setShowCancelModal(false)}
+              className="absolute top-5 right-5 text-gray-300 hover:text-gray-500 text-xl font-light"
+            >
+              ✕
+            </button>
+
+            <div className="w-16 h-16 bg-red-50 rounded-[20px] flex items-center justify-center text-red-500 mb-5">
+              <AlertTriangle size={28} />
+            </div>
+
+            <h3 className="text-[22px] font-bold text-[#181926] tracking-tight">Cancel this project?</h3>
+            <p className="text-sm text-gray-400 mt-1.5 mb-7 leading-relaxed">
+              Your expert has been inactive for at least 5 days with no milestone submitted. We'll notify them and
+              give them 48 hours to respond. If they don't, the full escrowed amount will be automatically refunded
+              to your wallet and the project will be cancelled.
+            </p>
+
+            <div className="flex gap-4 w-full">
+              <button
+                type="button"
+                onClick={() => setShowCancelModal(false)}
+                className="flex-1 py-3 bg-[#f3f4f6] hover:bg-[#e5e7eb] text-[#6b7280] text-sm font-bold rounded-[14px] transition-colors"
+              >
+                Keep Project
+              </button>
+              <button
+                type="button"
+                disabled={cancelling}
+                onClick={handleCancelProject}
+                className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-[14px] shadow-sm transition-all disabled:opacity-50"
+              >
+                {cancelling ? "Requesting..." : "Request Cancellation"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showReviewModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">

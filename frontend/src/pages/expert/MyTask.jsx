@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Clock, UploadCloud, Info, ArrowLeft, ChevronRight, Briefcase, X, FileText, RefreshCw, Plus, Star } from "lucide-react";
 import { getMyProjects, getMilestones, submitMilestone, uploadMilestoneFiles, createMilestone } from "../../api/projects";
 import { createReview, hasReviewed } from "../../api/reviews";
+import MilestoneCountdown from "../../components/ui/MilestoneCountdown";
 import toast from "react-hot-toast";
 
 function milestoneUi(status) {
-  if (status === "APPROVED") return "completed";
+  if (status === "APPROVED" || status === "PAID") return "completed";
   if (status === "SUBMITTED" || status === "REVISION_REQUESTED" || status === "IN_PROGRESS" || status === "PENDING") return "active";
   return "pending";
 }
@@ -192,11 +193,11 @@ export default function MyTask() {
   };
 
   const releasedAmount = milestones
-    .filter((m) => m.status === "APPROVED")
+    .filter((m) => m.status === "APPROVED" || m.status === "PAID")
     .reduce((sum, m) => sum + (m.amount ?? 0), 0);
 
   const heldAmount = milestones
-    .filter((m) => m.status !== "APPROVED")
+    .filter((m) => m.status !== "APPROVED" && m.status !== "PAID")
     .reduce((sum, m) => sum + (m.amount ?? 0), 0);
 
   if (loading) {
@@ -445,6 +446,12 @@ export default function MyTask() {
                                 ? "Revision requested"
                                 : "In progress"}
                             </span>
+                            {milestone.status === "SUBMITTED" && milestone.reviewDeadline && (
+                              <span className="block text-[10px] text-gray-400 font-semibold mt-1">
+                                Auto-pay in{" "}
+                                <MilestoneCountdown deadline={milestone.reviewDeadline} className="text-orange-600 font-bold" />
+                              </span>
+                            )}
                           </div>
                         </div>
                         {milestone.status === "REVISION_REQUESTED" && milestone.revisionNote && (
@@ -564,16 +571,20 @@ export default function MyTask() {
             <h3 className="font-bold text-[#15153d] mb-4">History & Audit</h3>
             <div className="space-y-4">
               {milestones
-                .filter((m) => m.status === "APPROVED" || m.status === "SUBMITTED")
+                .filter((m) => m.status === "APPROVED" || m.status === "PAID" || m.status === "SUBMITTED")
                 .map((m) => (
                   <div key={m.id} className="text-sm">
                     <p className="font-bold text-gray-800">
-                      {m.status === "APPROVED" ? "Milestone Approved" : "Milestone Submitted"}
+                      {m.status === "PAID"
+                        ? "Milestone Auto-Approved & Paid"
+                        : m.status === "APPROVED"
+                        ? "Milestone Approved"
+                        : "Milestone Submitted"}
                     </p>
                     <p className="text-gray-500 text-xs mt-1">{m.title}</p>
                   </div>
                 ))}
-              {milestones.filter((m) => m.status === "APPROVED" || m.status === "SUBMITTED").length === 0 && (
+              {milestones.filter((m) => m.status === "APPROVED" || m.status === "PAID" || m.status === "SUBMITTED").length === 0 && (
                 <p className="text-xs text-gray-400">No activity yet.</p>
               )}
             </div>

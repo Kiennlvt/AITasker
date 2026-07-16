@@ -14,4 +14,6 @@ public interface ProjectRepository extends JpaRepository<Project, String> {
     long countByClientIdAndStatus(String clientId, ProjectStatus status);
     long countByExpertIdAndStatus(String expertId, ProjectStatus status);
     List<Project> findByConversationIsNull();
+    List<Project> findByExpertIdAndStatusAndCancellationRequestedAtIsNotNull(String expertId, ProjectStatus status);
+    List<Project> findByCancellationRequestedAtIsNotNullAndStatus(ProjectStatus status);
 }

@@ -10,13 +10,16 @@ import com.aitasker.repository.*;
 import com.aitasker.service.FileUploadService;
 import com.aitasker.service.NotificationService;
 import com.aitasker.service.ProjectService;
+import com.aitasker.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -25,9 +28,16 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class ProjectServiceImpl implements ProjectService {
 
+    private static final int CANCELLATION_INACTIVITY_DAYS = 5;
+    private static final int CANCELLATION_RESPONSE_HOURS = 48;
+    private static final int MILESTONE_REVIEW_DAYS = 5;
+
     private final ProjectRepository projectRepo;
     private final MilestoneRepository milestoneRepo;
     private final UserRepository userRepo;
+    private final EscrowRepository escrowRepo;
+    private final AuditLogRepository auditLogRepo;
+    private final WalletService walletService;
     private final FileUploadService fileUploadService;
     private final NotificationService notificationService;
 
@@ -60,15 +70,54 @@ public class ProjectServiceImpl implements ProjectService {
         ms.setStatus(MilestoneStatus.APPROVED);
         milestoneRepo.save(ms);
 
+        releaseMilestonePayment(ms, ReleaseReason.CLIENT_APPROVAL, clientId);
+
         notificationService.createNotification(
                 ms.getProject().getExpert(),
                 "Milestone Approved! 💰",
-                "Your submission for milestone '" + ms.getTitle() + "' has been approved.",
+                "Your submission for milestone '" + ms.getTitle() + "' has been approved and the payment has been released to your wallet.",
                 "MILESTONE",
                 ms.getProject().getId()
         );
 
         return toResponse(ms.getProject());
+    }
+
+    /**
+     * Credits the expert's wallet for a milestone amount, updates the escrow's released
+     * balance (flipping status to PARTIALLY_RELEASED/RELEASED as appropriate), stamps the
+     * milestone as paid, and writes an audit trail entry. Shared by the manual approval
+     * flow and the client-inactivity auto-release job so both paths stay consistent.
+     */
+    private void releaseMilestonePayment(Milestone ms, ReleaseReason reason, String performedBy) {
+        Project project = ms.getProject();
+        Escrow escrow = escrowRepo.findByProjectId(project.getId())
+                .orElseThrow(() -> AppException.badRequest("No escrow found for this project"));
+        BigDecimal amount = BigDecimal.valueOf(ms.getAmount());
+
+        walletService.creditFromEscrowRelease(project.getExpert().getId(), amount,
+                "Milestone payment release: " + ms.getTitle());
+
+        BigDecimal alreadyReleased = escrow.getReleasedAmount() != null ? escrow.getReleasedAmount() : BigDecimal.ZERO;
+        escrow.setReleasedAmount(alreadyReleased.add(amount));
+        escrow.setStatus(escrow.getReleasedAmount().compareTo(escrow.getAmount()) >= 0
+                ? EscrowStatus.RELEASED
+                : EscrowStatus.PARTIALLY_RELEASED);
+        escrowRepo.save(escrow);
+
+        ms.setPaidAt(LocalDateTime.now());
+        milestoneRepo.save(ms);
+
+        auditLogRepo.save(AuditLog.builder()
+                .projectId(project.getId())
+                .milestoneId(ms.getId())
+                .escrowId(escrow.getId())
+                .clientId(project.getClient().getId())
+                .expertId(project.getExpert().getId())
+                .releasedAmount(amount)
+                .reason(reason)
+                .performedBy(performedBy)
+                .build());
     }
 
     @Override
@@ -83,7 +132,8 @@ public class ProjectServiceImpl implements ProjectService {
         List<Milestone> ms = project.getMilestones() != null ? project.getMilestones() : List.of();
         if (ms.isEmpty())
             throw AppException.badRequest("Project has no milestones");
-        boolean allApproved = ms.stream().allMatch(m -> m.getStatus() == MilestoneStatus.APPROVED);
+        boolean allApproved = ms.stream()
+                .allMatch(m -> m.getStatus() == MilestoneStatus.APPROVED || m.getStatus() == MilestoneStatus.PAID);
         if (!allApproved)
             throw AppException.badRequest("All milestones must be approved before finishing");
 
@@ -132,6 +182,7 @@ public class ProjectServiceImpl implements ProjectService {
             throw AppException.forbidden("Not your project");
         ms.setStatus(MilestoneStatus.SUBMITTED);
         ms.setDeliverableNote(note);
+        ms.setSubmittedAt(LocalDateTime.now());
         milestoneRepo.save(ms);
 
         notificationService.createNotification(
@@ -141,6 +192,8 @@ public class ProjectServiceImpl implements ProjectService {
                 "MILESTONE",
                 ms.getProject().getId()
         );
+
+        withdrawCancellationRequest(ms.getProject(), "The expert submitted a milestone deliverable.");
 
         return toResponse(ms.getProject());
     }
@@ -224,8 +277,15 @@ public class ProjectServiceImpl implements ProjectService {
 
     private ProjectResponse toResponse(Project p) {
         List<Milestone> ms = p.getMilestones() != null ? p.getMilestones() : List.of();
-        long approved = ms.stream().filter(m -> m.getStatus() == MilestoneStatus.APPROVED).count();
+        long approved = ms.stream()
+                .filter(m -> m.getStatus() == MilestoneStatus.APPROVED || m.getStatus() == MilestoneStatus.PAID)
+                .count();
         int progress = ms.isEmpty() ? 0 : (int) (approved * 100 / ms.size());
+
+        Escrow escrow = escrowRepo.findByProjectId(p.getId()).orElse(null);
+        LocalDateTime cancellationDeadline = p.getCancellationRequestedAt() != null
+                ? p.getCancellationRequestedAt().plusHours(CANCELLATION_RESPONSE_HOURS)
+                : null;
 
         return ProjectResponse.builder()
                 .id(p.getId())
@@ -241,7 +301,182 @@ public class ProjectServiceImpl implements ProjectService {
                 .progress(progress)
                 .milestones(ms.stream().map(this::msToResponse).toList())
                 .createdAt(p.getCreatedAt())
+                .escrowStatus(escrow != null ? escrow.getStatus().name() : null)
+                .cancellationRequestedAt(p.getCancellationRequestedAt())
+                .cancellationDeadline(cancellationDeadline)
+                .cancellationEligible(isCancellationEligible(p, escrow))
                 .build();
+    }
+
+    @Override
+    public ProjectResponse requestCancellation(String clientId, String projectId) {
+        Project project = projectRepo.findById(projectId)
+                .orElseThrow(() -> AppException.notFound("Project not found"));
+        if (!project.getClient().getId().equals(clientId))
+            throw AppException.forbidden("Not your project");
+
+        Escrow escrow = escrowRepo.findByProjectId(projectId)
+                .orElseThrow(() -> AppException.badRequest("No escrow found for this project"));
+
+        if (!isCancellationEligible(project, escrow))
+            throw AppException.badRequest("This project is not eligible for cancellation");
+
+        project.setCancellationRequestedAt(LocalDateTime.now());
+        projectRepo.save(project);
+
+        notificationService.createNotification(
+                project.getExpert(),
+                "Cancellation Requested",
+                "Your client has requested to cancel project '" + project.getJob().getTitle() +
+                        "' due to inactivity. Please respond (e.g. log in or submit a milestone) within " +
+                        CANCELLATION_RESPONSE_HOURS + " hours, or the project will be cancelled and the escrow refunded.",
+                "PROJECT",
+                project.getId()
+        );
+
+        return toResponse(project);
+    }
+
+    @Override
+    public void processExpiredCancellationRequests() {
+        LocalDateTime cutoff = LocalDateTime.now().minusHours(CANCELLATION_RESPONSE_HOURS);
+        List<Project> pending = projectRepo.findByCancellationRequestedAtIsNotNullAndStatus(ProjectStatus.ACTIVE);
+
+        for (Project project : pending) {
+            if (project.getCancellationRequestedAt().isAfter(cutoff))
+                continue; // still within the 48h response window
+
+            if (expertHasRespondedSince(project)) {
+                withdrawCancellationRequest(project, "The expert became active or made progress before the deadline.");
+                continue;
+            }
+
+            Escrow escrow = escrowRepo.findByProjectId(project.getId()).orElse(null);
+            if (escrow == null || escrow.getStatus() != EscrowStatus.HOLDING)
+                continue; // nothing left to refund
+
+            walletService.creditFromEscrowRefund(project.getClient().getId(), escrow.getAmount(),
+                    "Escrow refund for cancelled project: " + project.getJob().getTitle());
+            escrow.setStatus(EscrowStatus.REFUNDED);
+            escrowRepo.save(escrow);
+
+            project.setStatus(ProjectStatus.CANCELLED);
+            projectRepo.save(project);
+
+            notificationService.createNotification(
+                    project.getClient(),
+                    "Project Cancelled & Refunded",
+                    "Project '" + project.getJob().getTitle() + "' was cancelled due to expert inactivity. " +
+                            escrow.getAmount() + " has been refunded to your wallet.",
+                    "PROJECT",
+                    project.getId()
+            );
+            notificationService.createNotification(
+                    project.getExpert(),
+                    "Project Cancelled",
+                    "Project '" + project.getJob().getTitle() + "' was cancelled by the client due to inactivity.",
+                    "PROJECT",
+                    project.getId()
+            );
+        }
+    }
+
+    private boolean expertHasRespondedSince(Project project) {
+        User expert = project.getExpert();
+        boolean activeSinceRequest = expert.getLastActiveAt() != null
+                && expert.getLastActiveAt().isAfter(project.getCancellationRequestedAt());
+        return activeSinceRequest || hasMilestoneProgressed(project);
+    }
+
+    private boolean hasMilestoneProgressed(Project project) {
+        List<Milestone> ms = project.getMilestones() != null ? project.getMilestones() : List.of();
+        return ms.stream().anyMatch(m -> m.getStatus() != MilestoneStatus.PENDING && m.getStatus() != MilestoneStatus.IN_PROGRESS);
+    }
+
+    private void withdrawCancellationRequest(Project project, String reason) {
+        if (project.getCancellationRequestedAt() == null) return;
+        project.setCancellationRequestedAt(null);
+        projectRepo.save(project);
+        notificationService.createNotification(
+                project.getClient(),
+                "Cancellation Request Withdrawn",
+                "Your cancellation request for project '" + project.getJob().getTitle() + "' was withdrawn. " + reason,
+                "PROJECT",
+                project.getId()
+        );
+    }
+
+    @Override
+    public void withdrawStaleCancellationRequestsForExpert(String expertId) {
+        List<Project> pending = projectRepo.findByExpertIdAndStatusAndCancellationRequestedAtIsNotNull(
+                expertId, ProjectStatus.ACTIVE);
+        for (Project project : pending) {
+            withdrawCancellationRequest(project, "The expert is active again.");
+        }
+    }
+
+    @Override
+    public void processAutoReleaseMilestones() {
+        LocalDateTime now = LocalDateTime.now();
+        List<Milestone> candidates = milestoneRepo
+                .findByStatusAndSubmittedAtIsNotNullAndPaidAtIsNull(MilestoneStatus.SUBMITTED);
+
+        for (Milestone ms : candidates) {
+            if (ms.getSubmittedAt().plusDays(MILESTONE_REVIEW_DAYS).isAfter(now))
+                continue; // review deadline hasn't expired yet
+
+            Project project = ms.getProject();
+            if (project.getStatus() != ProjectStatus.ACTIVE)
+                continue;
+
+            Escrow escrow = escrowRepo.findByProjectId(project.getId()).orElse(null);
+            if (escrow == null
+                    || (escrow.getStatus() != EscrowStatus.HOLDING && escrow.getStatus() != EscrowStatus.PARTIALLY_RELEASED))
+                continue;
+
+            User client = project.getClient();
+            boolean clientRespondedSinceSubmission = client.getLastActiveAt() != null
+                    && client.getLastActiveAt().isAfter(ms.getSubmittedAt());
+            if (clientRespondedSinceSubmission)
+                continue; // client is not actually inactive - verified at run time
+
+            BigDecimal amount = BigDecimal.valueOf(ms.getAmount());
+
+            ms.setStatus(MilestoneStatus.PAID);
+            milestoneRepo.save(ms);
+
+            releaseMilestonePayment(ms, ReleaseReason.CLIENT_INACTIVE_TIMEOUT, "SYSTEM");
+
+            notificationService.createNotification(
+                    project.getExpert(),
+                    "Milestone Auto-Approved & Paid 💰",
+                    "Your milestone '" + ms.getTitle() + "' was automatically approved and paid because the client " +
+                            "did not respond within " + MILESTONE_REVIEW_DAYS + " days of your submission.",
+                    "MILESTONE",
+                    project.getId()
+            );
+            notificationService.createNotification(
+                    client,
+                    "Milestone Payment Auto-Released",
+                    "The " + MILESTONE_REVIEW_DAYS + "-day review period for milestone '" + ms.getTitle() +
+                            "' expired due to inactivity. " + amount + " has been automatically released to the expert.",
+                    "MILESTONE",
+                    project.getId()
+            );
+        }
+    }
+
+    private boolean isCancellationEligible(Project project, Escrow escrow) {
+        if (project.getStatus() != ProjectStatus.ACTIVE) return false;
+        if (project.getCancellationRequestedAt() != null) return false;
+        if (escrow == null || escrow.getStatus() != EscrowStatus.HOLDING) return false;
+        if (hasMilestoneProgressed(project)) return false;
+
+        User expert = project.getExpert();
+        LocalDateTime lastKnownActivity = expert.getLastActiveAt() != null
+                ? expert.getLastActiveAt()
+                : project.getCreatedAt();
+        return lastKnownActivity.isBefore(LocalDateTime.now().minusDays(CANCELLATION_INACTIVITY_DAYS));
     }
 
     @Override
@@ -271,6 +506,9 @@ public class ProjectServiceImpl implements ProjectService {
                 .revisionNote(m.getRevisionNote())
                 .attachmentUrls(m.getAttachmentUrls())
                 .status(m.getStatus())
+                .submittedAt(m.getSubmittedAt())
+                .paidAt(m.getPaidAt())
+                .reviewDeadline(m.getSubmittedAt() != null ? m.getSubmittedAt().plusDays(MILESTONE_REVIEW_DAYS) : null)
                 .build();
     }
 }

@@ -40,6 +40,7 @@ import SavedServices from "./pages/client/SavedService";
 import SavedJobs from "./pages/expert/SavedJobs";
 import PublicProfile from "./pages/public/PublicProfile";
 import SettingsPage from "./pages/public/Settings";
+import WalletPage from "./pages/client/Wallet";
 
 // Renders ClientLayout or ExpertLayout depending on logged-in user's role
 function DynamicLayout() {
@@ -72,6 +73,7 @@ export default function App() {
           <Route element={<DynamicLayout />}>
             <Route path="/messages" element={<Messages />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/wallet" element={<WalletPage />} />
           </Route>
         </Route>
 
