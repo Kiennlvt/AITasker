@@ -7,6 +7,7 @@ import {
   BadgeRussianRubleIcon,
   UserCircle,
   Bookmark,
+  Wallet,
 } from "lucide-react";
 import { Outlet } from "react-router-dom";
 import Header from "../ui/Header";
@@ -49,6 +50,11 @@ const menuItems = [
       name: "Saved Services",
       icon: <Bookmark size={20} />,
       path: "/saved-services",
+    },
+    {
+      name: "Wallet",
+      icon: <Wallet size={20} />,
+      path: "/wallet",
     },
     {
       name: "Profile",

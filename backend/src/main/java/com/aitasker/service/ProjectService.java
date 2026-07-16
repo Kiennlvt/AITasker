@@ -19,4 +19,8 @@ public interface ProjectService {
     MilestoneResponse updateMilestone(String expertId, String milestoneId, CreateMilestoneRequest request);
     List<MilestoneResponse> getMilestones(String userId, String projectId);
     List<String> uploadMilestoneFiles(String expertId, String milestoneId, List<MultipartFile> files);
+    ProjectResponse requestCancellation(String clientId, String projectId);
+    void processExpiredCancellationRequests();
+    void withdrawStaleCancellationRequestsForExpert(String expertId);
+    void processAutoReleaseMilestones();
 }

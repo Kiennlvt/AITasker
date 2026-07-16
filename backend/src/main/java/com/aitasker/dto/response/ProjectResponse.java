@@ -22,4 +22,8 @@ public class ProjectResponse {
     private int progress; // 0-100 %
     private List<MilestoneResponse> milestones;
     private LocalDateTime createdAt;
+    private String escrowStatus;
+    private LocalDateTime cancellationRequestedAt;
+    private LocalDateTime cancellationDeadline;
+    private boolean cancellationEligible;
 }

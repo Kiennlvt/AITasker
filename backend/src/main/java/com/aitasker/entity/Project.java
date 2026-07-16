@@ -43,6 +43,8 @@ public class Project {
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL)
     private List<Milestone> milestones;
 
+    private LocalDateTime cancellationRequestedAt;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

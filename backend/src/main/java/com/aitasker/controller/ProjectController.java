@@ -96,4 +96,11 @@ public class ProjectController {
                                                   @RequestParam("files") List<MultipartFile> files) {
         return ApiResponse.ok(projectService.uploadMilestoneFiles(user.getUsername(), milestoneId, files));
     }
+
+    @PostMapping("/{projectId}/cancel-request")
+    @PreAuthorize("hasRole('CLIENT')")
+    public ApiResponse<ProjectResponse> requestCancellation(@AuthenticationPrincipal UserDetails user,
+                                                              @PathVariable String projectId) {
+        return ApiResponse.ok(projectService.requestCancellation(user.getUsername(), projectId));
+    }
 }

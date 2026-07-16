@@ -52,6 +52,10 @@ public class Milestone {
     @Builder.Default
     private List<String> attachmentUrls = new ArrayList<>();
 
+    private LocalDateTime submittedAt;
+
+    private LocalDateTime paidAt;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 }

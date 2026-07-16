@@ -45,6 +45,8 @@ public class User {
     @Builder.Default
     private boolean isActive = true;
 
+    private LocalDateTime lastActiveAt;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

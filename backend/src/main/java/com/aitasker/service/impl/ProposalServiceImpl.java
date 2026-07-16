@@ -9,10 +9,12 @@ import com.aitasker.repository.*;
 import com.aitasker.service.ConversationService;
 import com.aitasker.service.NotificationService;
 import com.aitasker.service.ProposalService;
+import com.aitasker.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -23,9 +25,10 @@ public class ProposalServiceImpl implements ProposalService {
     private final JobPostRepository jobRepo;
     private final UserRepository userRepo;
     private final ProjectRepository projectRepo;
-    private final ReviewRepository reviewRepo;
+    private final EscrowRepository escrowRepo;
     private final ConversationService conversationService;
     private final NotificationService notificationService;
+    private final WalletService walletService;
 
     @Override
     public ProposalResponse submitProposal(String expertId, SubmitProposalRequest request) {
@@ -82,12 +85,19 @@ public class ProposalServiceImpl implements ProposalService {
     @Transactional
     public ProposalResponse acceptProposal(String clientId, String proposalId) {
         Proposal proposal = getProposalAndCheckClient(clientId, proposalId);
+        JobPost job = proposal.getJob();
+
+        // Escrow rule: client's wallet must hold 100% of the project budget before
+        // the project is created. Throws AppException.badRequest and rolls back
+        // (via @Transactional) if the balance is insufficient.
+        BigDecimal totalBudget = BigDecimal.valueOf(job.getBudget());
+        walletService.debitForEscrow(clientId, totalBudget,
+                "Escrow lock for project: " + job.getTitle());
 
         proposal.setStatus(ProposalStatus.ACCEPTED);
         proposalRepo.save(proposal);
 
         // BR-16: Job → In Progress, auto-create Project
-        JobPost job = proposal.getJob();
         job.setStatus(JobStatus.IN_PROGRESS);
         jobRepo.save(job);
 
@@ -106,6 +116,13 @@ public class ProposalServiceImpl implements ProposalService {
                 .budget(proposal.getBidAmount())
                 .build();
         projectRepo.save(project);
+
+        Escrow escrow = Escrow.builder()
+                .project(project)
+                .amount(totalBudget)
+                .status(EscrowStatus.HOLDING)
+                .build();
+        escrowRepo.save(escrow);
 
         // Reject other pending proposals for same job
         proposalRepo.findByJobIdOrderByCreatedAtDesc(job.getId()).stream()
