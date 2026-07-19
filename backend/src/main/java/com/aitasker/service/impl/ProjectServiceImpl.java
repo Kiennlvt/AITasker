@@ -37,6 +37,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final UserRepository userRepo;
     private final EscrowRepository escrowRepo;
     private final AuditLogRepository auditLogRepo;
+    private final JobPostRepository jobPostRepo;
     private final WalletService walletService;
     private final FileUploadService fileUploadService;
     private final NotificationService notificationService;
@@ -70,7 +71,7 @@ public class ProjectServiceImpl implements ProjectService {
         ms.setStatus(MilestoneStatus.APPROVED);
         milestoneRepo.save(ms);
 
-        releaseMilestonePayment(ms, ReleaseReason.CLIENT_APPROVAL, clientId);
+        releaseMilestonePayment(ms, BigDecimal.valueOf(ms.getAmount()), ReleaseReason.CLIENT_APPROVAL, clientId);
 
         notificationService.createNotification(
                 ms.getProject().getExpert(),
@@ -81,12 +82,24 @@ public class ProjectServiceImpl implements ProjectService {
         );
 
         Project project = ms.getProject();
+        checkProjectCompletion(project);
+
+        return toResponse(project);
+    }
+
+    /**
+     * If every milestone is APPROVED or PAID, marks the project (and its job) COMPLETED and
+     * notifies the expert. Shared by manual approval and dispute-resolution settlement so both
+     * paths converge on the same completion check.
+     */
+    private void checkProjectCompletion(Project project) {
         List<Milestone> allMilestones = project.getMilestones() != null ? project.getMilestones() : List.of();
         boolean allApproved = !allMilestones.isEmpty()
-                && allMilestones.stream().allMatch(m -> m.getStatus() == MilestoneStatus.APPROVED);
+                && allMilestones.stream().allMatch(m -> m.getStatus() == MilestoneStatus.APPROVED || m.getStatus() == MilestoneStatus.PAID);
         if (allApproved && project.getStatus() != ProjectStatus.COMPLETED) {
             project.setStatus(ProjectStatus.COMPLETED);
             projectRepo.save(project);
+            syncJobStatus(project, JobStatus.COMPLETED);
 
             notificationService.createNotification(
                     project.getExpert(),
@@ -96,21 +109,32 @@ public class ProjectServiceImpl implements ProjectService {
                     project.getId()
             );
         }
-
-        return toResponse(project);
     }
 
     /**
-     * Credits the expert's wallet for a milestone amount, updates the escrow's released
+     * Keeps the underlying JobPost's status (surfaced to admins via the job listing) in
+     * sync with the Project's status. The two are updated independently elsewhere, and
+     * without this the admin view can get stuck showing IN_PROGRESS after a project has
+     * actually completed or been cancelled.
+     */
+    private void syncJobStatus(Project project, JobStatus status) {
+        JobPost job = project.getJob();
+        job.setStatus(status);
+        jobPostRepo.save(job);
+    }
+
+    /**
+     * Credits the expert's wallet for the given amount, updates the escrow's released
      * balance (flipping status to PARTIALLY_RELEASED/RELEASED as appropriate), stamps the
      * milestone as paid, and writes an audit trail entry. Shared by the manual approval
-     * flow and the client-inactivity auto-release job so both paths stay consistent.
+     * flow, the client-inactivity auto-release job, and dispute-resolution settlement
+     * (which passes a partial amount rather than the full milestone amount) so all paths
+     * stay consistent.
      */
-    private void releaseMilestonePayment(Milestone ms, ReleaseReason reason, String performedBy) {
+    private void releaseMilestonePayment(Milestone ms, BigDecimal amount, ReleaseReason reason, String performedBy) {
         Project project = ms.getProject();
         Escrow escrow = escrowRepo.findByProjectId(project.getId())
                 .orElseThrow(() -> AppException.badRequest("No escrow found for this project"));
-        BigDecimal amount = BigDecimal.valueOf(ms.getAmount());
 
         walletService.creditFromEscrowRelease(project.getExpert().getId(), amount,
                 "Milestone payment release: " + ms.getTitle());
@@ -156,6 +180,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         project.setStatus(ProjectStatus.COMPLETED);
         projectRepo.save(project);
+        syncJobStatus(project, JobStatus.COMPLETED);
 
         notificationService.createNotification(
                 project.getExpert(),
@@ -387,6 +412,7 @@ public class ProjectServiceImpl implements ProjectService {
 
             project.setStatus(ProjectStatus.CANCELLED);
             projectRepo.save(project);
+            syncJobStatus(project, JobStatus.CANCELLED);
 
             notificationService.createNotification(
                     project.getClient(),
@@ -470,7 +496,7 @@ public class ProjectServiceImpl implements ProjectService {
             ms.setStatus(MilestoneStatus.PAID);
             milestoneRepo.save(ms);
 
-            releaseMilestonePayment(ms, ReleaseReason.CLIENT_INACTIVE_TIMEOUT, "SYSTEM");
+            releaseMilestonePayment(ms, amount, ReleaseReason.CLIENT_INACTIVE_TIMEOUT, "SYSTEM");
 
             notificationService.createNotification(
                     project.getExpert(),
@@ -489,6 +515,59 @@ public class ProjectServiceImpl implements ProjectService {
                     project.getId()
             );
         }
+    }
+
+    /**
+     * Settles a disputed milestone per an admin's arbitration verdict: releases clientAmount +
+     * expertAmount (which must sum to the milestone's disputed amount) between the two parties,
+     * closes out the milestone as PAID, and returns the project to ACTIVE (or COMPLETED if that
+     * was the last outstanding milestone). Called by DisputeService once it has validated and
+     * recorded the resolution on the Dispute entity itself.
+     */
+    @Override
+    public ProjectResponse resolveMilestoneDispute(String milestoneId, BigDecimal clientAmount, BigDecimal expertAmount,
+                                                     String resolutionNote, String adminId) {
+        Milestone ms = milestoneRepo.findById(milestoneId)
+                .orElseThrow(() -> AppException.notFound("Milestone not found"));
+        if (ms.getStatus() != MilestoneStatus.DISPUTED)
+            throw AppException.badRequest("Milestone is not under dispute");
+
+        Project project = ms.getProject();
+
+        if (expertAmount.compareTo(BigDecimal.ZERO) > 0) {
+            releaseMilestonePayment(ms, expertAmount, ReleaseReason.DISPUTE_RESOLUTION, adminId);
+        }
+        if (clientAmount.compareTo(BigDecimal.ZERO) > 0) {
+            walletService.creditFromEscrowRefund(project.getClient().getId(), clientAmount,
+                    "Dispute resolution refund for milestone: " + ms.getTitle());
+        }
+
+        ms.setStatus(MilestoneStatus.PAID);
+        ms.setPaidAt(LocalDateTime.now());
+        milestoneRepo.save(ms);
+
+        project.setStatus(ProjectStatus.ACTIVE);
+        projectRepo.save(project);
+        checkProjectCompletion(project);
+
+        String verdictSummary = "Client: " + clientAmount + ", Expert: " + expertAmount
+                + (resolutionNote != null && !resolutionNote.isBlank() ? ". Note: " + resolutionNote : "");
+        notificationService.createNotification(
+                project.getClient(),
+                "Dispute Resolved ⚖️",
+                "The dispute over milestone '" + ms.getTitle() + "' has been resolved. " + verdictSummary,
+                "DISPUTE",
+                project.getId()
+        );
+        notificationService.createNotification(
+                project.getExpert(),
+                "Dispute Resolved ⚖️",
+                "The dispute over milestone '" + ms.getTitle() + "' has been resolved. " + verdictSummary,
+                "DISPUTE",
+                project.getId()
+        );
+
+        return toResponse(project);
     }
 
     private boolean isCancellationEligible(Project project, Escrow escrow) {
