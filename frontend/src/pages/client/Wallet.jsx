@@ -15,8 +15,7 @@ import toast from "react-hot-toast";
 import StatCard from "../../components/ui/StatCard";
 import { getWallet, getTransactions, deposit } from "../../api/wallet";
 
-const formatVND = (amount) =>
-  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount ?? 0);
+const formatVND = (amount) => `$${new Intl.NumberFormat("vi-VN").format(amount ?? 0)}`;
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "-";
@@ -110,7 +109,7 @@ function DepositModal({ onClose, onSuccess }) {
             Amount (VND)
           </label>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">₫</span>
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
             <input
               ref={inputRef}
               type="number"

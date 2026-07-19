@@ -79,8 +79,18 @@ export default function Header() {
         } else {
           navigate("/my-tasks");
         }
+      } else if (notif.type === "DISPUTE") {
+        if (user?.role === "ADMIN") {
+          navigate("/admin/disputes");
+        } else if (user?.role === "CLIENT") {
+          navigate(`/projects/${notif.relatedId || ""}`);
+        } else {
+          navigate("/my-tasks");
+        }
       } else if (notif.type === "MESSAGE") {
         navigate(`/messages?conversationId=${notif.relatedId || ""}`);
+      } else if (notif.type === "INVITATION") {
+        navigate(`/jobs/${notif.relatedId || ""}`);
       }
     } catch (err) {
       console.error(err);
