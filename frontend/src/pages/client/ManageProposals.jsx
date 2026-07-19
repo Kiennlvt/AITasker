@@ -19,6 +19,15 @@ const FILTER_OPTIONS = [
   { value: "REJECTED", label: "Rejected" },
 ];
 
+const JOB_FILTER_OPTIONS = [
+  { value: "ALL", label: "All jobs" },
+  { value: "AWAITING", label: "Awaiting hire" },
+  { value: "HIRED", label: "Already hired" },
+];
+
+const isJobAwaitingHire = (job) => job.status === "OPEN";
+const isJobHired = (job) => job.status !== "OPEN" && job.status !== "DRAFT";
+
 const SORT_OPTIONS = [
   { value: "NEWEST", label: "Newest first" },
   { value: "PRICE_LOW", label: "Price: Low to High" },
@@ -38,6 +47,7 @@ export default function ManageProposals() {
   const [actionLoading, setActionLoading] = useState(null);
   const [messageLoading, setMessageLoading] = useState(null);
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [jobStatusFilter, setJobStatusFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("NEWEST");
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
@@ -69,6 +79,17 @@ export default function ManageProposals() {
       .finally(() => setLoadingJobs(false));
     getWallet().then(setWallet).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (jobStatusFilter === "ALL") return;
+    const visibleJobs = jobs.filter((job) =>
+      jobStatusFilter === "AWAITING" ? isJobAwaitingHire(job) : isJobHired(job)
+    );
+    if (visibleJobs.length === 0) return;
+    if (!visibleJobs.some((job) => job.id === selectedJobId)) {
+      setSelectedJobId(visibleJobs[0].id);
+    }
+  }, [jobStatusFilter, jobs]);
 
   useEffect(() => {
     if (!selectedJobId) return;
@@ -224,6 +245,12 @@ export default function ManageProposals() {
       .slice(0, 3);
   })();
 
+  const filteredJobs = jobs.filter((job) => {
+    if (jobStatusFilter === "AWAITING") return isJobAwaitingHire(job);
+    if (jobStatusFilter === "HIRED") return isJobHired(job);
+    return true;
+  });
+
   const statusBadge = (status) => {
     if (status === "ACCEPTED") return "bg-emerald-50 text-emerald-600 border border-emerald-200";
     if (status === "REJECTED") return "bg-rose-50 text-rose-600 border border-rose-200";
@@ -238,20 +265,59 @@ export default function ManageProposals() {
 
       {/* Job selector */}
       {!loadingJobs && jobs.length > 1 && (
-        <div className="flex flex-wrap gap-2">
-          {jobs.map((job) => (
-            <button
-              key={job.id}
-              onClick={() => setSelectedJobId(job.id)}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
-                selectedJobId === job.id
-                  ? "bg-orange-500 text-white border-orange-500"
-                  : "bg-white text-gray-600 border-gray-200 hover:border-orange-300"
-              }`}
-            >
-              {job.title}
-            </button>
-          ))}
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-1.5">
+            {JOB_FILTER_OPTIONS.map((option) => {
+              const count =
+                option.value === "ALL"
+                  ? jobs.length
+                  : option.value === "AWAITING"
+                  ? jobs.filter(isJobAwaitingHire).length
+                  : jobs.filter(isJobHired).length;
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => setJobStatusFilter(option.value)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                    jobStatusFilter === option.value
+                      ? "bg-[#1a1a3c] text-white border-[#1a1a3c]"
+                      : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  {option.label} ({count})
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {filteredJobs.length === 0 && (
+              <p className="text-sm text-gray-400 py-1">No jobs match this filter.</p>
+            )}
+            {filteredJobs.map((job) => (
+              <button
+                key={job.id}
+                onClick={() => setSelectedJobId(job.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                  selectedJobId === job.id
+                    ? "bg-orange-500 text-white border-orange-500"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-orange-300"
+                }`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full shrink-0 ${
+                    isJobHired(job)
+                      ? "bg-emerald-500"
+                      : isJobAwaitingHire(job)
+                      ? "bg-orange-400"
+                      : "bg-gray-300"
+                  } ${selectedJobId === job.id ? "ring-2 ring-white/60" : ""}`}
+                  title={isJobHired(job) ? "Hired" : "Awaiting hire"}
+                />
+                {job.title}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -417,10 +483,14 @@ export default function ManageProposals() {
                   <img
                     src={proposal.expertAvatarUrl}
                     alt={proposal.expertName}
-                    className="w-14 h-14 object-cover rounded-xl border border-gray-100 shadow-sm"
+                    onClick={() => navigate(`/profile/${proposal.expertId}`)}
+                    className="w-14 h-14 object-cover rounded-xl border border-gray-100 shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
                   />
                 ) : (
-                  <div className="w-14 h-14 rounded-xl bg-orange-500 flex items-center justify-center text-white font-bold text-lg">
+                  <div
+                    onClick={() => navigate(`/profile/${proposal.expertId}`)}
+                    className="w-14 h-14 rounded-xl bg-orange-500 flex items-center justify-center text-white font-bold text-lg cursor-pointer hover:opacity-80 transition-opacity"
+                  >
                     {proposal.expertName?.slice(0, 2).toUpperCase() ?? "??"}
                   </div>
                 )}

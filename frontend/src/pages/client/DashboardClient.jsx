@@ -15,8 +15,7 @@ import Button from "../../components/ui/Button";
 import StatCard from "../../components/ui/StatCard";
 import DataTable from "../../components/ui/DataTable";
 import { clientTable } from "../../data/clientTable";
-import { topExpertsData } from "../../data/dashboardClientMockData";
-import { getClientDashboard, getMyProjects } from "../../api/dashboard";
+import { getClientDashboard, getMyProjects, getTopExperts } from "../../api/dashboard";
 import { getMyDrafts, publishDraft, deleteJob } from "../../api/jobs";
 import useAuthStore from "../../store/authStore";
 import usePostJobStore from "../../store/postJobStore";
@@ -30,6 +29,8 @@ export default function DashboardClient() {
   const [drafts, setDrafts] = useState([]);
   const [draftsLoading, setDraftsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
+  const [topExperts, setTopExperts] = useState([]);
+  const [topExpertsLoading, setTopExpertsLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([getClientDashboard(), getMyProjects()])
@@ -64,6 +65,13 @@ export default function DashboardClient() {
       .then(setDrafts)
       .catch(() => {})
       .finally(() => setDraftsLoading(false));
+  }, []);
+
+  useEffect(() => {
+    getTopExperts()
+      .then(setTopExperts)
+      .catch(() => {})
+      .finally(() => setTopExpertsLoading(false));
   }, []);
 
   const handlePublishDraft = async (id) => {
@@ -236,33 +244,50 @@ export default function DashboardClient() {
           </div>
         </div>
 
-        {/* Top Experts (still mock — no ratings API yet) */}
+        {/* Top Experts */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col justify-between">
           <div>
             <h3 className="font-bold text-[#1a1a3c] uppercase tracking-wider text-xs mb-6">
               Top Performing Experts
             </h3>
-            <div className="space-y-6">
-              {topExpertsData.map((expert, idx) => (
-                <div key={idx} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <img src={expert.img} alt={expert.name} className="w-11 h-11 rounded-full object-cover" />
-                    <div>
-                      <h4 className="font-bold text-[#1a1a3c] text-sm">{expert.name}</h4>
-                      <p className="text-xs text-gray-400 mt-0.5">{expert.role}</p>
+            {topExpertsLoading ? (
+              <p className="text-sm text-gray-400">Loading...</p>
+            ) : topExperts.length === 0 ? (
+              <p className="text-sm text-gray-400">No rated experts yet.</p>
+            ) : (
+              <div className="space-y-6">
+                {topExperts.map((expert) => (
+                  <button
+                    key={expert.id}
+                    onClick={() => navigate(`/profile/${expert.id}`)}
+                    className="w-full flex items-center justify-between text-left rounded-xl -mx-2 px-2 py-1 hover:bg-orange-50/60 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      {expert.avatarUrl ? (
+                        <img
+                          src={expert.avatarUrl}
+                          alt={expert.name}
+                          className="w-11 h-11 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-11 h-11 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 text-sm font-bold">
+                          {expert.name?.slice(0, 2).toUpperCase() || "??"}
+                        </div>
+                      )}
+                      <div>
+                        <h4 className="font-bold text-[#1a1a3c] text-sm">{expert.name}</h4>
+                        <p className="text-xs text-gray-400 mt-0.5">{expert.role}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold text-amber-500 text-sm">★ {expert.rating}</div>
-                    <div className="text-[11px] text-gray-400 mt-0.5">{expert.tasks}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                    <div className="text-right">
+                      <div className="font-bold text-amber-500 text-sm">★ {expert.rating.toFixed(1)}</div>
+                      <div className="text-[11px] text-gray-400 mt-0.5">{expert.tasksCompleted} Tasks</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <button className="w-full border border-gray-200 text-gray-700 font-semibold py-3 rounded-xl mt-8 text-sm hover:bg-gray-50 transition-all shadow-sm">
-            Browse Network
-          </button>
         </div>
       </div>
 

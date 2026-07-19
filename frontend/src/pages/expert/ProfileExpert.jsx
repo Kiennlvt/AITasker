@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Star, MapPin, MessageSquare, CheckCircle, Pencil, X, Plus, AlertCircle, Loader2, Award } from "lucide-react";
-import { getMe, updateMe } from "../../api/users";
+import { getMe, updateMe, getUserPublicStats } from "../../api/users";
 import { getMyProjects } from "../../api/projects";
 import { getExpertDashboard } from "../../api/dashboard";
 import toast from "react-hot-toast";
@@ -9,6 +9,7 @@ export default function ProfileExpert() {
   const [profile, setProfile] = useState(null);
   const [completedProjects, setCompletedProjects] = useState([]);
   const [stats, setStats] = useState(null);
+  const [ratingStats, setRatingStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEdit, setIsEdit] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -17,8 +18,9 @@ export default function ProfileExpert() {
 
   useEffect(() => {
     const load = async () => {
+      let me;
       try {
-        const me = await getMe();
+        me = await getMe();
         setProfile(me);
         setForm({
           bio: me.bio || "",
@@ -47,6 +49,14 @@ export default function ProfileExpert() {
         setStats(dashboard);
       } catch {
         // silent fail — stats section shows 0
+      }
+
+      // Load rating stats — non-critical
+      try {
+        const userRatingStats = await getUserPublicStats(me.id);
+        setRatingStats(userRatingStats);
+      } catch {
+        // silent fail — rating section stays hidden
       }
 
       setLoading(false);
@@ -93,6 +103,8 @@ export default function ProfileExpert() {
   }
 
   const isComplete = !!profile?.bio;
+  const rating = ratingStats?.averageRating ?? 0;
+  const hasRating = ratingStats?.reviewCount > 0;
 
   return (
     <div className="space-y-6 max-w-[1400px] mx-auto pb-12 animate-fadeIn">
@@ -137,6 +149,19 @@ export default function ProfileExpert() {
               <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
                 <div>
                   <h2 className="text-2xl font-bold text-[#15153d]">{profile?.fullName}</h2>
+                  {hasRating && (
+                    <div className="flex items-center gap-1 mt-1 justify-center sm:justify-start">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star
+                          key={s}
+                          size={13}
+                          className={s <= Math.round(rating) ? "text-amber-400 fill-amber-400" : "text-gray-200 fill-gray-200"}
+                        />
+                      ))}
+                      <span className="ml-1 text-xs font-bold text-[#1a1a3c]">{rating.toFixed(1)}</span>
+                      <span className="text-xs text-gray-400">({ratingStats.reviewCount} reviews)</span>
+                    </div>
+                  )}
                   <p className="text-gray-400 text-xs mt-0.5">{profile?.email}</p>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
@@ -176,7 +201,7 @@ export default function ProfileExpert() {
                 </p>
               ) : null}
 
-              <div className="grid grid-cols-3 gap-2 border-t border-gray-50 pt-4 text-center sm:text-left">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 border-t border-gray-50 pt-4 text-center sm:text-left">
                 <div>
                   <span className="text-[10px] text-gray-400 font-bold uppercase">Jobs Completed</span>
                   <p className="text-lg font-bold text-[#15153d] mt-0.5">{completedProjects.length}</p>
@@ -190,6 +215,10 @@ export default function ProfileExpert() {
                 <div>
                   <span className="text-[10px] text-gray-400 font-bold uppercase">Active Projects</span>
                   <p className="text-lg font-bold text-[#15153d] mt-0.5">{stats?.activeProjects ?? 0}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] text-gray-400 font-bold uppercase">Rating</span>
+                  <p className="text-lg font-bold text-[#15153d] mt-0.5">{hasRating ? rating.toFixed(1) : "—"}</p>
                 </div>
               </div>
             </div>
@@ -241,6 +270,18 @@ export default function ProfileExpert() {
               </div>
             )}
           </div>
+
+          {/* RECENT REVIEWS */}
+          {ratingStats?.recentReviews?.length > 0 && (
+            <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+              <h3 className="font-bold text-base text-[#15153d]">Recent Reviews</h3>
+              <div className="space-y-3">
+                {ratingStats.recentReviews.map((r, i) => (
+                  <ReviewCard key={i} review={r} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* RIGHT */}
@@ -344,6 +385,43 @@ export default function ProfileExpert() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ReviewCard({ review }) {
+  const initials = (review.giverName || "?")[0].toUpperCase();
+  const date = review.createdAt
+    ? new Date(review.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+    : null;
+
+  return (
+    <div className="border border-gray-100 rounded-2xl p-4 space-y-2">
+      <div className="flex items-center gap-3">
+        {review.giverAvatarUrl ? (
+          <img src={review.giverAvatarUrl} alt={review.giverName} className="w-9 h-9 rounded-full object-cover" />
+        ) : (
+          <div className="w-9 h-9 rounded-full bg-[#15153d] flex items-center justify-center text-white font-bold text-sm shrink-0">
+            {initials}
+          </div>
+        )}
+        <div>
+          <p className="text-sm font-bold text-[#15153d]">{review.giverName}</p>
+          {date && <p className="text-[11px] text-gray-400">{date}</p>}
+        </div>
+        <div className="ml-auto flex items-center gap-0.5">
+          {[1, 2, 3, 4, 5].map((s) => (
+            <Star
+              key={s}
+              size={12}
+              className={s <= review.rating ? "text-amber-400 fill-amber-400" : "text-gray-200 fill-gray-200"}
+            />
+          ))}
+        </div>
+      </div>
+      {review.comment && (
+        <p className="text-sm text-gray-500 leading-relaxed">{review.comment}</p>
+      )}
     </div>
   );
 }

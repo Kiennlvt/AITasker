@@ -15,6 +15,7 @@ public interface ProposalRepository extends JpaRepository<Proposal, String> {
     Optional<Proposal> findByJobIdAndExpertIdAndStatus(String jobId, String expertId, ProposalStatus status);
     boolean existsByJobIdAndExpertIdAndStatus(String jobId, String expertId, ProposalStatus status);
     long countByExpertIdAndStatus(String expertId, ProposalStatus status);
+    long countByJob_Client_IdAndStatus(String clientId, ProposalStatus status);
     int countByJobId(String jobId);
     boolean existsByJobIdAndStatus(String jobId, ProposalStatus status);
     void deleteByJobId(String jobId);

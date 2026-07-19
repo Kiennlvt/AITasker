@@ -311,16 +311,23 @@ export default function JobDetail() {
 
           <div className="rounded-3xl bg-white p-7 shadow-[0_14px_35px_rgba(15,23,42,0.08)]">
             <h3 className="mb-5 text-sm font-black">About the Client</h3>
-            <div className="flex items-center gap-3">
+            <div
+              className="flex items-center gap-3 cursor-pointer group"
+              onClick={() => job.clientId && navigate(`/profile/${job.clientId}`)}
+            >
               {job.clientAvatarUrl ? (
-                <img src={job.clientAvatarUrl} alt={job.clientName} className="h-12 w-12 rounded-full object-cover" />
+                <img
+                  src={job.clientAvatarUrl}
+                  alt={job.clientName}
+                  className="h-12 w-12 rounded-full object-cover group-hover:opacity-80 transition-opacity"
+                />
               ) : (
-                <div className="h-12 w-12 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold text-base">
+                <div className="h-12 w-12 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold text-base group-hover:opacity-80 transition-opacity">
                   {job.clientName?.slice(0, 2).toUpperCase() ?? "??"}
                 </div>
               )}
               <div>
-                <p className="text-sm font-black">{job.clientName ?? "Client"}</p>
+                <p className="text-sm font-black group-hover:text-orange-500 transition-colors">{job.clientName ?? "Client"}</p>
                 <p className="text-[11px] text-slate-400">Verified Client</p>
               </div>
             </div>

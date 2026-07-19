@@ -5,7 +5,7 @@ import Button from "@/components/ui/Button";
 import StepBar from "../../../components/ui/StepBar";
 import usePostJobStore from "../../../store/postJobStore";
 import { generatePRD, suggestExperts } from "../../../api/ai";
-import { createJob, saveDraft, updateJob, publishDraft } from "../../../api/jobs";
+import { createJob, saveDraft, updateJob, publishDraft, inviteExpert } from "../../../api/jobs";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -158,7 +158,7 @@ function SectionField({ icon, label, value, onChange, rows = 3, placeholder }) {
   );
 }
 
-function ExpertCard({ expert, isFallback }) {
+function ExpertCard({ expert, isFallback, selected, onToggleInvite }) {
   return (
     <div className="bg-white border border-gray-200 rounded-2xl p-5 hover:shadow-md transition-shadow flex flex-col">
       <div className="flex items-start gap-3 mb-3">
@@ -183,15 +183,19 @@ function ExpertCard({ expert, isFallback }) {
         <span className="font-semibold text-[#15153d]">{expert.rate}</span>
       </div>
       <button
+        type="button"
         disabled={isFallback}
+        onClick={() => onToggleInvite?.(expert.id)}
         title={isFallback ? "Expert suggestions are illustrative only" : undefined}
         className={`w-full rounded-xl py-2.5 text-sm font-semibold transition-colors ${
           isFallback
             ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+            : selected
+            ? "bg-green-600 hover:bg-green-700 text-white"
             : "bg-[#15153d] hover:bg-[#1f1f5a] text-white"
         }`}
       >
-        {isFallback ? "AI Suggestion Only" : "Invite to Apply"}
+        {isFallback ? "AI Suggestion Only" : selected ? "✓ Will Invite" : "Invite to Apply"}
       </button>
     </div>
   );
@@ -219,6 +223,27 @@ const [requirements, setRequirements] = useState("");
   const [experts,      setExperts]      = useState([]);
   const [isFallback,   setIsFallback]   = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [invitedExpertIds, setInvitedExpertIds] = useState(() => new Set());
+
+  const handleToggleInvite = (expertId) => {
+    setInvitedExpertIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(expertId)) next.delete(expertId);
+      else next.add(expertId);
+      return next;
+    });
+  };
+
+  const sendPendingInvites = async (jobId) => {
+    if (invitedExpertIds.size === 0) return;
+    const results = await Promise.allSettled(
+      [...invitedExpertIds].map((expertId) => inviteExpert(jobId, expertId))
+    );
+    const failed = results.filter((r) => r.status === "rejected").length;
+    const sent = results.length - failed;
+    if (sent > 0) toast.success(`Invited ${sent} expert${sent > 1 ? "s" : ""} to apply!`);
+    if (failed > 0) toast.error(`Failed to invite ${failed} expert${failed > 1 ? "s" : ""}.`);
+  };
 
   // ── Initialize sections from store on mount ──
   const initialPRD        = store.generatedPRD;
@@ -351,6 +376,7 @@ description: seedObjective,
         skills: [store.category],
       };
 
+      let jobId = store.draftId;
       if (store.draftId) {
         // Editing existing draft or open job → update
         await updateJob(store.draftId, payload);
@@ -358,15 +384,18 @@ description: seedObjective,
           await publishDraft(store.draftId);
         }
       } else {
-        await createJob(payload);
+        const created = await createJob(payload);
+        jobId = created.id;
       }
-      
+
+      await sendPendingInvites(jobId);
+
       if (store.draftId && store.jobStatus !== 'DRAFT') {
         toast.success("Project updated successfully!");
       } else {
         toast.success("Project posted successfully!");
       }
-      
+
       store.reset();
 navigate("/dashboard");
     } catch (err) {
@@ -577,9 +606,18 @@ navigate("/dashboard");
               </div>
               <p className="text-sm text-gray-500 mb-6">
                 Based on your requirements, we found {experts.length} experts with high compatibility scores.
+                Select experts to invite — they'll be notified once you publish this job.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {experts.map((e) => <ExpertCard key={e.id} expert={e} isFallback={isFallback} />)}
+                {experts.map((e) => (
+                  <ExpertCard
+                    key={e.id}
+                    expert={e}
+                    isFallback={isFallback}
+                    selected={invitedExpertIds.has(e.id)}
+                    onToggleInvite={handleToggleInvite}
+                  />
+                ))}
               </div>
             </div>
           )}

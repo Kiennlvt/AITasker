@@ -40,9 +40,9 @@ export default function LoginPage() {
       if (data.role === "ADMIN") {
         navigate("/admin/dashboard");
       } else if (data.role === "EXPERT") {
-        navigate("/dashboard-expert");
+        navigate("/marketplace");
       } else {
-        navigate("/dashboard");
+        navigate("/marketplace");
       }
 
     } catch (err) {

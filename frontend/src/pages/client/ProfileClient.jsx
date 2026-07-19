@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Sparkles, Star, Clock, ArrowRight, ShieldCheck, Pencil, CheckCircle, AlertCircle, Loader2, MapPin, User } from "lucide-react";
 import { Link } from "react-router-dom";
-import { getMe, updateMe } from "../../api/users";
+import { getMe, updateMe, getUserPublicStats } from "../../api/users";
 import { getMyJobs } from "../../api/jobs";
 import { getMyProjects } from "../../api/projects";
 import { getClientDashboard } from "../../api/dashboard";
@@ -12,20 +12,25 @@ export default function ProfileClient() {
   const [jobs, setJobs] = useState([]);
   const [completedProjects, setCompletedProjects] = useState([]);
   const [stats, setStats] = useState(null);
+  const [ratingStats, setRatingStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEdit, setIsEdit] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ fullName: "", bio: "", location: "" });
 
   useEffect(() => {
-    Promise.all([getMe(), getMyJobs(), getMyProjects(), getClientDashboard()])
-      .then(([me, myJobs, myProjects, dashboard]) => {
+    getMe()
+      .then((me) => {
         setProfile(me);
+        setForm({ fullName: me.fullName || "", bio: me.bio || "", location: me.location || "" });
+        if (!me.bio) setIsEdit(true);
+        return Promise.all([getMyJobs(), getMyProjects(), getClientDashboard(), getUserPublicStats(me.id)]);
+      })
+      .then(([myJobs, myProjects, dashboard, userRatingStats]) => {
         setJobs(myJobs.filter(j => j.status === "OPEN" || j.status === "IN_PROGRESS"));
         setCompletedProjects(myProjects.filter(p => p.status === "COMPLETED"));
         setStats(dashboard);
-        setForm({ fullName: me.fullName || "", bio: me.bio || "", location: me.location || "" });
-        if (!me.bio) setIsEdit(true);
+        setRatingStats(userRatingStats);
       })
       .catch(() => toast.error("Failed to load profile"))
       .finally(() => setLoading(false));
@@ -58,6 +63,8 @@ export default function ProfileClient() {
 
   const isComplete = !!profile?.bio;
   const initials = (profile?.fullName || "?")[0].toUpperCase();
+  const rating = ratingStats?.averageRating ?? 0;
+  const hasRating = ratingStats?.reviewCount > 0;
 
   return (
     <div className="space-y-6 max-w-[1400px] mx-auto pb-12 animate-fadeIn text-[#1a1a3c]">
@@ -101,6 +108,19 @@ export default function ProfileClient() {
                   <h1 className="text-2xl font-bold tracking-tight">{profile?.fullName}</h1>
                   {profile?.isVerified && <ShieldCheck size={18} className="text-orange-500" fill="currentColor" />}
                 </div>
+                {hasRating && (
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star
+                        key={s}
+                        size={13}
+                        className={s <= Math.round(rating) ? "text-amber-400 fill-amber-400" : "text-gray-200 fill-gray-200"}
+                      />
+                    ))}
+                    <span className="ml-1 text-xs font-bold text-[#1a1a3c]">{rating.toFixed(1)}</span>
+                    <span className="text-xs text-gray-400">({ratingStats.reviewCount} reviews)</span>
+                  </div>
+                )}
                 {profile?.location && (
                   <p className="text-gray-400 text-xs font-semibold flex items-center gap-1">
                     <MapPin size={12} /> {profile.location}
@@ -208,12 +228,7 @@ export default function ProfileClient() {
                 {completedProjects.map(p => (
                   <div key={p.id} className="border border-gray-100 rounded-2xl p-5 space-y-3 flex flex-col justify-between">
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="bg-green-50 text-green-700 text-[9px] font-black uppercase px-2 py-0.5 rounded border border-green-100">Completed</span>
-                        <div className="flex items-center gap-0.5 text-amber-500">
-                          {[...Array(5)].map((_, i) => <Star key={i} size={12} fill="currentColor" />)}
-                        </div>
-                      </div>
+                      <span className="bg-green-50 text-green-700 text-[9px] font-black uppercase px-2 py-0.5 rounded border border-green-100">Completed</span>
                       <h4 className="font-bold text-sm">{p.jobTitle}</h4>
                       <p className="text-xs text-gray-400 leading-relaxed line-clamp-2">{p.jobDescription}</p>
                     </div>
@@ -230,6 +245,18 @@ export default function ProfileClient() {
               </div>
             )}
           </div>
+
+          {/* RECENT REVIEWS */}
+          {ratingStats?.recentReviews?.length > 0 && (
+            <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm space-y-4">
+              <h3 className="font-bold text-lg">Recent Reviews</h3>
+              <div className="space-y-3">
+                {ratingStats.recentReviews.map((r, i) => (
+                  <ReviewCard key={i} review={r} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* RIGHT */}
@@ -255,6 +282,14 @@ export default function ProfileClient() {
               <div>
                 <p className="text-[10px] uppercase font-bold tracking-widest opacity-75 mb-0.5">Proposals</p>
                 <span className="text-xl font-black">{stats?.pendingProposals ?? 0}</span>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-widest opacity-75 mb-0.5">Rating</p>
+                <span className="text-xl font-black">{hasRating ? rating.toFixed(1) : "—"}</span>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-widest opacity-75 mb-0.5">Reviews</p>
+                <span className="text-xl font-black">{ratingStats?.reviewCount ?? 0}</span>
               </div>
             </div>
           </div>
@@ -287,6 +322,43 @@ export default function ProfileClient() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ReviewCard({ review }) {
+  const initials = (review.giverName || "?")[0].toUpperCase();
+  const date = review.createdAt
+    ? new Date(review.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+    : null;
+
+  return (
+    <div className="border border-gray-100 rounded-2xl p-4 space-y-2">
+      <div className="flex items-center gap-3">
+        {review.giverAvatarUrl ? (
+          <img src={review.giverAvatarUrl} alt={review.giverName} className="w-9 h-9 rounded-full object-cover" />
+        ) : (
+          <div className="w-9 h-9 rounded-full bg-[#1a1a3c] flex items-center justify-center text-white font-bold text-sm shrink-0">
+            {initials}
+          </div>
+        )}
+        <div>
+          <p className="text-sm font-bold text-[#1a1a3c]">{review.giverName}</p>
+          {date && <p className="text-[11px] text-gray-400">{date}</p>}
+        </div>
+        <div className="ml-auto flex items-center gap-0.5">
+          {[1, 2, 3, 4, 5].map((s) => (
+            <Star
+              key={s}
+              size={12}
+              className={s <= review.rating ? "text-amber-400 fill-amber-400" : "text-gray-200 fill-gray-200"}
+            />
+          ))}
+        </div>
+      </div>
+      {review.comment && (
+        <p className="text-sm text-gray-500 leading-relaxed">{review.comment}</p>
+      )}
     </div>
   );
 }

@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList
 } from 'recharts';
 import { FiUsers, FiMessageSquare, FiShield, FiBriefcase } from 'react-icons/fi';
-import { getAdminStats, getAdminJobs } from '../../api/admin'; 
+import { getAdminStats } from '../../api/admin';
+
+const MAX_CATEGORY_BARS = 6;
+
+function capCategories(data) {
+  if (data.length <= MAX_CATEGORY_BARS) return data;
+  const sorted = [...data].sort((a, b) => b.value - a.value);
+  const top = sorted.slice(0, MAX_CATEGORY_BARS);
+  const otherValue = sorted.slice(MAX_CATEGORY_BARS).reduce((sum, item) => sum + (item.value || 0), 0);
+  return [...top, { name: 'Other', value: otherValue }];
+}
 
 export default function StatisticsPage() {
   const groupOrange = "#f97316";
-  const COLORS = [groupOrange, '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
 
   const [loading, setLoading] = useState(true);
   const [revenueData, setRevenueData] = useState([]);
@@ -25,10 +33,7 @@ export default function StatisticsPage() {
     let isMounted = true;
     setLoading(true);
 
-    Promise.all([
-      getAdminStats().catch(() => null),
-      getAdminJobs('ALL').catch(() => null)
-    ]).then(([statsRes, jobsRes]) => {
+    getAdminStats().catch(() => null).then((statsRes) => {
       if (!isMounted) return;
 
       // 1. Process User Information
@@ -41,29 +46,12 @@ export default function StatisticsPage() {
       setBannedUsersCount(statsRes?.bannedUsers ?? 0);
 
       // 2. Process Job & Proposals Engagement
-      const allJobs = jobsRes?.content || jobsRes || [];
-      const safeJobs = Array.isArray(allJobs) ? allJobs : [];
+      setAvgProposals(statsRes?.avgProposals ?? 0);
 
-      if (safeJobs.length > 0) {
-        const totalProposals = safeJobs.reduce((sum, j) => sum + (j?.proposalCount || 0), 0);
-        setAvgProposals(parseFloat((totalProposals / safeJobs.length).toFixed(1)));
-
-        const counts = {};
-        safeJobs.forEach(j => {
-          if (j) {
-            const cat = j.category || 'Other AI Services';
-            counts[cat] = (counts[cat] || 0) + 1;
-          }
-        });
-        
-        setCategoryData(Object.keys(counts).map(key => ({
-          name: key,
-          value: Math.round((counts[key] / safeJobs.length) * 100)
-        })));
-      } else {
-        setAvgProposals(0);
-        setCategoryData([{ name: 'AI Domain', value: 100 }]);
-      }
+      const rawCategoryData = Array.isArray(statsRes?.categoryData) ? statsRes.categoryData : [];
+      setCategoryData(rawCategoryData.length > 0
+        ? capCategories(rawCategoryData).sort((a, b) => b.value - a.value)
+        : [{ name: 'AI Domain', value: 100 }]);
 
       // 3. Process Platform Financial Statistics
       setRevenueData(statsRes?.revenueData || [
@@ -146,31 +134,33 @@ export default function StatisticsPage() {
         <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="text-lg font-black text-slate-700">Market Category Share</h3>
-            <p className="text-xs font-bold text-slate-400">Distribution percentage of job posts according to live AI domains.</p>
+            <p className="text-xs font-bold text-slate-400">Ranked share of job posts by AI domain, most active category first.</p>
           </div>
-          <div className="h-64 w-full relative flex items-center justify-center">
+          <div className="h-64 w-full mt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={categoryData} cx="50%" cy="50%" innerRadius={60} outerRadius={85} paddingAngle={5} dataKey="value">
-                  {categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0' }} />
-              </PieChart>
+              <BarChart
+                data={categoryData}
+                layout="vertical"
+                margin={{ top: 0, right: 28, left: 0, bottom: 0 }}
+                barCategoryGap={10}
+              >
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                <XAxis type="number" domain={[0, 100]} hide />
+                <YAxis
+                  dataKey="name"
+                  type="category"
+                  width={110}
+                  tick={{ fill: '#64748b', fontSize: 11, fontWeight: 700 }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(name) => (name.length > 16 ? `${name.slice(0, 15)}…` : name)}
+                />
+                <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0' }} formatter={(value) => [`${value}%`, 'Share']} />
+                <Bar dataKey="value" fill={groupOrange} radius={[0, 4, 4, 0]} maxBarSize={18} name="Share">
+                  <LabelList dataKey="value" position="right" formatter={(v) => `${v}%`} style={{ fill: '#475569', fontSize: 11, fontWeight: 700 }} />
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
-            <div className="absolute text-center flex flex-col">
-              <span className="text-2xl font-black text-slate-700">100%</span>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">AI Domain</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-xs font-bold text-slate-500 mt-2">
-            {categoryData.map((item, index) => (
-              <div key={item.name || index} className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }}></span>
-                <span className="truncate">{item.name || 'Unknown'} ({item.value || 0}%)</span>
-              </div>
-            ))}
           </div>
         </div>
       </div>
