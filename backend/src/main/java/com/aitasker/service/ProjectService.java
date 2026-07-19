@@ -5,6 +5,7 @@ import com.aitasker.dto.response.MilestoneResponse;
 import com.aitasker.dto.response.ProjectResponse;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -23,4 +24,6 @@ public interface ProjectService {
     void processExpiredCancellationRequests();
     void withdrawStaleCancellationRequestsForExpert(String expertId);
     void processAutoReleaseMilestones();
+    ProjectResponse resolveMilestoneDispute(String milestoneId, BigDecimal clientAmount, BigDecimal expertAmount,
+                                             String resolutionNote, String adminId);
 }

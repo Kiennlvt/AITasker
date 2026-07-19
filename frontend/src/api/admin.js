@@ -20,3 +20,13 @@ export const approveJob = (id) =>
 
 export const rejectJob = (id) =>
   api.patch(`/admin/jobs/${id}/reject`).then(r => r.data.data);
+
+// ── Disputes ───────────────────────────────────────────────────────────────
+export const getAdminDisputes = (status = 'ALL') =>
+  api.get('/admin/disputes', { params: { status } }).then(r => r.data.data);
+
+export const getAdminDispute = (id) =>
+  api.get(`/admin/disputes/${id}`).then(r => r.data.data);
+
+export const resolveDispute = (id, { clientAmount, expertAmount, resolutionNote }) =>
+  api.post(`/admin/disputes/${id}/resolve`, { clientAmount, expertAmount, resolutionNote }).then(r => r.data.data);

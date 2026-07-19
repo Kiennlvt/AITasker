@@ -19,4 +19,5 @@ public interface JobService {
     JobSuggestionDto suggestJobImprovement(String title, String description);
     List<JobResponse> getMyDrafts(String clientId);
     JobResponse publishDraft(String clientId, String jobId);
+    void inviteExpert(String clientId, String jobId, String expertId);
 }

@@ -29,4 +29,16 @@ public class FileUploadService {
         }
         return urls;
     }
+
+    public List<String> saveDisputeFiles(String disputeId, List<MultipartFile> files) throws IOException {
+        List<String> urls = new ArrayList<>();
+        Path dir = Paths.get(uploadDir, "disputes", disputeId);
+        Files.createDirectories(dir);
+        for (MultipartFile file : files) {
+            String filename = UUID.randomUUID() + "_" + file.getOriginalFilename();
+            file.transferTo(dir.resolve(filename));
+            urls.add("/files/disputes/" + disputeId + "/" + filename);
+        }
+        return urls;
+    }
 }

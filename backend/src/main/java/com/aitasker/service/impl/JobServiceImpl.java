@@ -7,12 +7,14 @@ import com.aitasker.entity.JobPost;
 import com.aitasker.entity.User;
 import com.aitasker.enums.JobStatus;
 import com.aitasker.enums.ProposalStatus;
+import com.aitasker.enums.UserRole;
 import com.aitasker.exception.AppException;
 import com.aitasker.repository.JobPostRepository;
 import com.aitasker.repository.ProposalRepository;
 import com.aitasker.repository.SavedJobRepository;
 import com.aitasker.repository.UserRepository;
 import com.aitasker.service.JobService;
+import com.aitasker.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,6 +33,7 @@ public class JobServiceImpl implements JobService {
     private final UserRepository userRepo;
     private final ProposalRepository proposalRepo;
     private final SavedJobRepository savedJobRepo;
+    private final NotificationService notificationService;
 
     @Override
     public Page<JobResponse> getAllOpenJobs(Pageable pageable) {
@@ -154,6 +157,29 @@ public class JobServiceImpl implements JobService {
 
         job.setStatus(JobStatus.OPEN);
         return toResponse(jobRepo.save(job));
+    }
+
+    @Override
+    public void inviteExpert(String clientId, String jobId, String expertId) {
+        JobPost job = jobRepo.findById(jobId)
+                .orElseThrow(() -> AppException.notFound("Job not found"));
+        if (!job.getClient().getId().equals(clientId))
+            throw AppException.forbidden("Not your job");
+        if (job.getStatus() != JobStatus.OPEN)
+            throw AppException.badRequest("Job must be open to invite experts");
+
+        User expert = userRepo.findById(expertId)
+                .orElseThrow(() -> AppException.notFound("Expert not found"));
+        if (expert.getRole() != UserRole.EXPERT)
+            throw AppException.badRequest("User is not an expert");
+
+        notificationService.createNotification(
+                expert,
+                "You've been invited to apply!",
+                job.getClient().getFullName() + " invited you to apply for '" + job.getTitle() + "'.",
+                "INVITATION",
+                job.getId()
+        );
     }
 
     private JobResponse toResponse(JobPost job) {

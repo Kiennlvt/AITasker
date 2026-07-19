@@ -5,7 +5,6 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from "rec
 import StatCard from "../../components/ui/StatCard";
 import DataTable from "../../components/ui/DataTable";
 import { expertTable } from "../../data/expertTable";
-import { earningsData } from "../../data/dashboardExpertMockData";
 import { getExpertDashboard } from "../../api/dashboard";
 import { getMyProposals } from "../../api/proposals";
 import useAuthStore from "../../store/authStore";
@@ -14,6 +13,7 @@ export default function DashboardExpert() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const [stats, setStats] = useState({ activeProjects: 0, pendingProposals: 0, totalEarnings: 0, averageRating: 0, reviewCount: 0 });
+  const [earningsData, setEarningsData] = useState([]);
   const [proposals, setProposals] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,6 +28,9 @@ export default function DashboardExpert() {
           averageRating: dash.averageRating ?? 0,
           reviewCount: dash.reviewCount ?? 0,
         });
+        setEarningsData(
+          (dash.monthlyEarnings ?? []).map((m) => ({ name: m.name, earnings: m.earnings ?? 0 }))
+        );
         setProposals(
           props.slice(0, 4).map((p) => ({
             id: p.id,

@@ -26,6 +26,7 @@ public class ProposalServiceImpl implements ProposalService {
     private final UserRepository userRepo;
     private final ProjectRepository projectRepo;
     private final EscrowRepository escrowRepo;
+    private final ReviewRepository reviewRepo;
     private final ConversationService conversationService;
     private final NotificationService notificationService;
     private final WalletService walletService;
@@ -87,10 +88,11 @@ public class ProposalServiceImpl implements ProposalService {
         Proposal proposal = getProposalAndCheckClient(clientId, proposalId);
         JobPost job = proposal.getJob();
 
-        // Escrow rule: client's wallet must hold 100% of the project budget before
-        // the project is created. Throws AppException.badRequest and rolls back
-        // (via @Transactional) if the balance is insufficient.
-        BigDecimal totalBudget = BigDecimal.valueOf(job.getBudget());
+        // Escrow rule: client's wallet must hold 100% of the accepted proposal's bid
+        // amount before the project is created (not the job's original posted budget -
+        // the bid is what client and expert actually agreed to). Throws
+        // AppException.badRequest and rolls back (via @Transactional) if insufficient.
+        BigDecimal totalBudget = BigDecimal.valueOf(proposal.getBidAmount());
         walletService.debitForEscrow(clientId, totalBudget,
                 "Escrow lock for project: " + job.getTitle());
 
@@ -99,6 +101,7 @@ public class ProposalServiceImpl implements ProposalService {
 
         // BR-16: Job → In Progress, auto-create Project
         job.setStatus(JobStatus.IN_PROGRESS);
+        job.setBudget(proposal.getBidAmount());
         jobRepo.save(job);
 
         // BR-21: Project auto-created on proposal acceptance

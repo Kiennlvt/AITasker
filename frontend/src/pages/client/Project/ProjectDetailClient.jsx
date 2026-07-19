@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Share2, Terminal, ArrowLeft, FileText, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
+import { Share2, Terminal, ArrowLeft, FileText, ChevronDown, ChevronUp, AlertTriangle, Gavel } from "lucide-react";
 import MessagesIcon from "../../../components/ui/MesageIcon";
 import MilestoneCountdown from "../../../components/ui/MilestoneCountdown";
 import { getProjectById, getMilestones, approveMilestone, requestRevision, requestProjectCancellation } from "../../../api/projects";
+import { fileDispute, uploadDisputeEvidence, respondToDispute, getProjectDisputes } from "../../../api/disputes";
+import { createReview, hasReviewed } from "../../../api/reviews";
+import useAuthStore from "../../../store/authStore";
 import toast from "react-hot-toast";
 
 function milestoneUi(status) {
@@ -14,6 +17,7 @@ function milestoneUi(status) {
     case "SUBMITTED":
       return "active";
     case "REVISION_REQUESTED":
+    case "DISPUTED":
       return "active";
     default:
       return "pending";
@@ -28,6 +32,8 @@ function milestoneStatusStyle(status) {
       return { label: "In Review", className: "bg-blue-50 text-blue-600 border-blue-100" };
     case "REVISION_REQUESTED":
       return { label: "Revision", className: "bg-amber-50 text-amber-600 border-amber-100" };
+    case "DISPUTED":
+      return { label: "Disputed", className: "bg-red-50 text-red-600 border-red-100" };
     case "IN_PROGRESS":
       return { label: "In Progress", className: "bg-orange-50 text-orange-600 border-orange-100" };
     default:
@@ -50,27 +56,44 @@ function projectStatusStyle(status) {
 
 export default function ProjectDetailClient() {
   const { id } = useParams();
+  const { user } = useAuthStore();
   const [project, setProject] = useState(null);
   const [milestones, setMilestones] = useState([]);
+  const [disputes, setDisputes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
-  const [revisionNote, setRevisionNote] = useState({});   
-  const [revisionOpen, setRevisionOpen] = useState(null); 
+  const [revisionNote, setRevisionNote] = useState({});
+  const [revisionOpen, setRevisionOpen] = useState(null);
+  const [revisionDueDate, setRevisionDueDate] = useState({});
+  const [disputeOpen, setDisputeOpen] = useState(null);
+  const [disputeReason, setDisputeReason] = useState({});
+  const [disputeFiles, setDisputeFiles] = useState({});
+  const [respondNote, setRespondNote] = useState({});
+  const [respondFiles, setRespondFiles] = useState({});
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [alreadyReviewed, setAlreadyReviewed] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+
+  const loadDisputes = () => getProjectDisputes(id).then(setDisputes).catch(() => {});
 
   useEffect(() => {
     Promise.all([getProjectById(id), getMilestones(id)])
       .then(([proj, miles]) => {
         setProject(proj);
-        setMilestones(miles);
+        setMilestones(
+          [...miles].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+        );
+        if (proj.status === "COMPLETED") {
+          hasReviewed(id).then(setAlreadyReviewed).catch(() => {});
+        }
       })
       .catch(() => toast.error("Failed to load project"))
       .finally(() => setLoading(false));
+    loadDisputes();
   }, [id]);
 
   const handleApprove = async (milestoneId) => {
@@ -78,7 +101,11 @@ export default function ProjectDetailClient() {
     try {
       const updatedProject = await approveMilestone(milestoneId);
       setProject(updatedProject);
-      setMilestones(updatedProject.milestones ?? []);
+      setMilestones(
+        [...(updatedProject.milestones ?? [])].sort(
+          (a, b) => new Date(a.dueDate) - new Date(b.dueDate)
+        )
+      );
       toast.success(
         updatedProject.status === "COMPLETED"
           ? "Milestone approved! Project completed 🎉"
@@ -112,6 +139,50 @@ export default function ProjectDetailClient() {
       toast.success("Revision requested.");
     } catch {
       toast.error("Failed to request revision");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleFileDispute = async (milestoneId) => {
+    const reason = disputeReason[milestoneId]?.trim();
+    if (!reason) { toast.error("Please describe why you're raising a dispute."); return; }
+    setActionLoading(milestoneId + "-dispute");
+    try {
+      const dispute = await fileDispute(milestoneId, reason);
+      const files = disputeFiles[milestoneId] || [];
+      if (files.length > 0) {
+        await uploadDisputeEvidence(dispute.id, files);
+      }
+      setMilestones((prev) => prev.map((m) => (m.id === milestoneId ? { ...m, status: "DISPUTED" } : m)));
+      setDisputeOpen(null);
+      setDisputeReason((prev) => ({ ...prev, [milestoneId]: "" }));
+      setDisputeFiles((prev) => ({ ...prev, [milestoneId]: [] }));
+      await loadDisputes();
+      toast.success("Dispute filed. An admin will review it shortly.");
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to file dispute");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRespondDispute = async (disputeId, milestoneId) => {
+    const response = respondNote[disputeId]?.trim();
+    if (!response) { toast.error("Please enter your response."); return; }
+    setActionLoading(milestoneId + "-respond");
+    try {
+      await respondToDispute(disputeId, response);
+      const files = respondFiles[disputeId] || [];
+      if (files.length > 0) {
+        await uploadDisputeEvidence(disputeId, files);
+      }
+      setRespondNote((prev) => ({ ...prev, [disputeId]: "" }));
+      setRespondFiles((prev) => ({ ...prev, [disputeId]: [] }));
+      await loadDisputes();
+      toast.success("Response submitted.");
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to submit response");
     } finally {
       setActionLoading(null);
     }
@@ -181,7 +252,6 @@ export default function ProjectDetailClient() {
 
             <div className="relative pl-6 space-y-8 before:content-[''] before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-gray-100">
               {milestones.map((milestone) => {
-                const uiStatus = milestoneUi(milestone.status);
                 const isRevision = milestone.status === "REVISION_REQUESTED";
                 const effectiveDueDate = isRevision && milestone.revisionDueDate
                   ? milestone.revisionDueDate
@@ -191,6 +261,10 @@ export default function ProjectDetailClient() {
                   new Date(effectiveDueDate) < new Date() &&
                   milestone.status !== "APPROVED" &&
                   milestone.status !== "SUBMITTED";
+                const canDisputeReview = milestone.status === "SUBMITTED" || milestone.status === "REVISION_REQUESTED";
+                const canDisputeOverdue = (milestone.status === "PENDING" || milestone.status === "IN_PROGRESS") && isPastDue;
+                let uiStatus = milestoneUi(milestone.status);
+                if (uiStatus === "pending" && canDisputeOverdue) uiStatus = "active";
                 return (
                   <div key={milestone.id} className="relative">
                     <div className="absolute -left-[24px] top-1 bg-white p-0.5 z-10">
@@ -209,8 +283,8 @@ export default function ProjectDetailClient() {
                       <div className="flex justify-between items-start gap-4 mb-2">
                         <h4 className="font-bold text-[#1a1a3c] text-base">{milestone.title}</h4>
                         {uiStatus === "active" ? (
-                          <span className="bg-orange-500 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded">
-                            {milestone.status === "REVISION_REQUESTED" ? "Revision" : "Active"}
+                          <span className={`text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded ${canDisputeOverdue ? "bg-red-500" : "bg-orange-500"}`}>
+                            {milestone.status === "REVISION_REQUESTED" ? "Revision" : canDisputeOverdue ? "Overdue" : "Active"}
                           </span>
                         ) : (
                           <span className="text-xs font-semibold text-gray-400">
@@ -251,6 +325,88 @@ export default function ProjectDetailClient() {
                         </div>
                       )}
 
+                      {milestone.revisionCount >= 2 && (milestone.status === "SUBMITTED" || milestone.status === "REVISION_REQUESTED") && (
+                        <p className="mt-2 text-[11px] font-semibold text-red-500">
+                          This milestone has been sent back for revision {milestone.revisionCount} times.
+                        </p>
+                      )}
+
+                      {milestone.status === "DISPUTED" && (() => {
+                        const dispute = disputes.find((d) => d.milestoneId === milestone.id && d.status === "PENDING");
+                        if (!dispute) return null;
+                        const isRespondent = dispute.respondentId === user?.id;
+                        return (
+                          <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded-xl space-y-2">
+                            <p className="text-[11px] font-bold text-red-600 uppercase">
+                              Dispute filed by {dispute.filedByName}
+                            </p>
+                            <p className="text-xs text-gray-700 leading-relaxed">{dispute.reason}</p>
+                            {isRespondent && !dispute.respondentResponse && (
+                              <div className="space-y-2 pt-1">
+                                <textarea
+                                  value={respondNote[dispute.id] ?? ""}
+                                  onChange={(e) => setRespondNote((prev) => ({ ...prev, [dispute.id]: e.target.value }))}
+                                  placeholder="Explain your side / submit evidence notes..."
+                                  className="w-full p-3 border border-red-200 rounded-xl text-xs outline-none focus:border-red-400 min-h-[70px] resize-none bg-white"
+                                />
+                                <input
+                                  type="file"
+                                  multiple
+                                  onChange={(e) => setRespondFiles((prev) => ({ ...prev, [dispute.id]: Array.from(e.target.files) }))}
+                                  className="w-full text-[11px] text-gray-500"
+                                />
+                                <button
+                                  onClick={() => handleRespondDispute(dispute.id, milestone.id)}
+                                  disabled={!!actionLoading}
+                                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-all disabled:opacity-50"
+                                >
+                                  {actionLoading === milestone.id + "-respond" ? "Submitting..." : "Submit Response"}
+                                </button>
+                              </div>
+                            )}
+                            {dispute.respondentResponse && (
+                              <div className="p-2 bg-white border border-red-100 rounded-lg">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase mb-0.5">Response</p>
+                                <p className="text-xs text-gray-700">{dispute.respondentResponse}</p>
+                                {dispute.respondentEvidenceUrls?.length > 0 && (
+                                  <div className="mt-2 flex flex-wrap gap-1.5">
+                                    {dispute.respondentEvidenceUrls.map((url) => (
+                                      <a
+                                        key={url}
+                                        href={`http://localhost:8080${url}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="flex items-center gap-1 px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-[10px] text-gray-600 hover:border-red-300 hover:bg-red-50 transition-colors"
+                                      >
+                                        <FileText size={10} className="text-red-400" />
+                                        {url.split('/').pop().replace(/^[0-9a-f-]+_/, '')}
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            <p className="text-[11px] text-red-500 italic">Waiting for admin review and verdict.</p>
+                          </div>
+                        );
+                      })()}
+
+                      {(() => {
+                        const resolved = disputes.find((d) => d.milestoneId === milestone.id && d.status === "RESOLVED");
+                        if (!resolved) return null;
+                        return (
+                          <div className="mt-3 p-3 bg-gray-50 border border-gray-100 rounded-xl">
+                            <p className="text-[11px] font-bold text-gray-500 uppercase mb-1">Dispute Resolved by Admin</p>
+                            <p className="text-xs text-gray-700">
+                              You: ${resolved.clientAmount?.toLocaleString()} · Expert: ${resolved.expertAmount?.toLocaleString()}
+                            </p>
+                            {resolved.resolutionNote && (
+                              <p className="text-[11px] text-gray-500 mt-1 italic">{resolved.resolutionNote}</p>
+                            )}
+                          </div>
+                        );
+                      })()}
+
                       {(milestone.status === "SUBMITTED" || milestone.status === "REVISION_REQUESTED") && milestone.attachmentUrls?.length > 0 && (
                         <div className="mt-3 space-y-1.5">
                           <p className="text-[11px] font-bold text-gray-400 uppercase">Attachments</p>
@@ -286,25 +442,66 @@ export default function ProjectDetailClient() {
                         </div>
                       )}
 
-                      {milestone.status === "SUBMITTED" && (
+                      {canDisputeOverdue && (
+                        <p className="mt-2 text-[11px] font-semibold text-red-500">
+                          This milestone's due date has passed and the expert hasn't submitted anything yet.
+                        </p>
+                      )}
+
+                      {(canDisputeReview || canDisputeOverdue) && (
                         <div className="mt-3 space-y-2">
                           <div className="flex gap-2">
+                            {milestone.status === "SUBMITTED" && (
+                              <>
+                                <button
+                                  onClick={() => handleApprove(milestone.id)}
+                                  disabled={!!actionLoading}
+                                  className="px-4 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-orange-600 transition-all disabled:opacity-50"
+                                >
+                                  {actionLoading === milestone.id + "-approve" ? "..." : "Approve"}
+                                </button>
+                                <button
+                                  onClick={() => setRevisionOpen(revisionOpen === milestone.id ? null : milestone.id)}
+                                  disabled={!!actionLoading}
+                                  className="flex items-center gap-1 px-4 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-600 shadow-sm hover:border-orange-300 transition-all disabled:opacity-50"
+                                >
+                                  Request Revision
+                                  {revisionOpen === milestone.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                </button>
+                              </>
+                            )}
                             <button
-                              onClick={() => handleApprove(milestone.id)}
+                              onClick={() => setDisputeOpen(disputeOpen === milestone.id ? null : milestone.id)}
                               disabled={!!actionLoading}
-                              className="px-4 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-orange-600 transition-all disabled:opacity-50"
+                              className="flex items-center gap-1 px-4 py-2 bg-white border border-red-200 rounded-lg text-xs font-bold text-red-500 shadow-sm hover:bg-red-50 transition-all disabled:opacity-50"
                             >
-                              {actionLoading === milestone.id + "-approve" ? "..." : "Approve"}
-                            </button>
-                            <button
-                              onClick={() => setRevisionOpen(revisionOpen === milestone.id ? null : milestone.id)}
-                              disabled={!!actionLoading}
-                              className="flex items-center gap-1 px-4 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-600 shadow-sm hover:border-orange-300 transition-all disabled:opacity-50"
-                            >
-                              Request Revision
-                              {revisionOpen === milestone.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                              <Gavel size={12} /> Raise a Dispute
                             </button>
                           </div>
+
+                          {disputeOpen === milestone.id && (
+                            <div className="space-y-2 pt-1">
+                              <textarea
+                                value={disputeReason[milestone.id] ?? ""}
+                                onChange={(e) => setDisputeReason((prev) => ({ ...prev, [milestone.id]: e.target.value }))}
+                                placeholder="Explain why you're raising a dispute..."
+                                className="w-full p-3 border border-red-200 rounded-xl text-xs outline-none focus:border-red-400 min-h-[80px] resize-none"
+                              />
+                              <input
+                                type="file"
+                                multiple
+                                onChange={(e) => setDisputeFiles((prev) => ({ ...prev, [milestone.id]: Array.from(e.target.files) }))}
+                                className="w-full text-[11px] text-gray-500"
+                              />
+                              <button
+                                onClick={() => handleFileDispute(milestone.id)}
+                                disabled={!!actionLoading}
+                                className="px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-all disabled:opacity-50"
+                              >
+                                {actionLoading === milestone.id + "-dispute" ? "Filing..." : "File Dispute"}
+                              </button>
+                            </div>
+                          )}
 
                           {revisionOpen === milestone.id && (
                             <div className="space-y-2 pt-1">
@@ -410,7 +607,7 @@ export default function ProjectDetailClient() {
           <ArrowLeft size={18} /> Back to projects
         </Link>
 
-        {project.status === "COMPLETED" && (
+        {project.status === "COMPLETED" && !alreadyReviewed && (
           <button
             onClick={() => setShowReviewModal(true)}
             className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-bold shadow-md transition-all"

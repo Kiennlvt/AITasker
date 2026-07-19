@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Clock, UploadCloud, Info, ArrowLeft, ChevronRight, Briefcase, X, FileText, RefreshCw, Plus, Star } from "lucide-react";
+import { CheckCircle2, Clock, UploadCloud, Info, ArrowLeft, ChevronRight, Briefcase, X, FileText, RefreshCw, Plus, Star, Gavel } from "lucide-react";
 import { getMyProjects, getMilestones, submitMilestone, uploadMilestoneFiles, createMilestone } from "../../api/projects";
+import { fileDispute, uploadDisputeEvidence, respondToDispute, getProjectDisputes } from "../../api/disputes";
 import { createReview, hasReviewed } from "../../api/reviews";
+import useAuthStore from "../../store/authStore";
 import MilestoneCountdown from "../../components/ui/MilestoneCountdown";
 import toast from "react-hot-toast";
 
 function milestoneUi(status) {
   if (status === "APPROVED" || status === "PAID") return "completed";
-  if (status === "SUBMITTED" || status === "REVISION_REQUESTED" || status === "IN_PROGRESS" || status === "PENDING") return "active";
+  if (status === "SUBMITTED" || status === "REVISION_REQUESTED" || status === "IN_PROGRESS" || status === "PENDING" || status === "DISPUTED") return "active";
   return "pending";
 }
 
@@ -20,9 +22,11 @@ const STATUS_MAP = {
 };
 
 export default function MyTask() {
+  const { user } = useAuthStore();
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [milestones, setMilestones] = useState([]);
+  const [disputes, setDisputes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [milestonesLoading, setMilestonesLoading] = useState(false);
   const [submitting, setSubmitting] = useState(null);
@@ -30,6 +34,12 @@ export default function MyTask() {
   const [note, setNote] = useState("");
   const [files, setFiles] = useState([]);
   const [dragging, setDragging] = useState(false);
+  const [disputeOpen, setDisputeOpen] = useState(null);
+  const [disputeReason, setDisputeReason] = useState({});
+  const [disputeFiles, setDisputeFiles] = useState({});
+  const [disputeLoading, setDisputeLoading] = useState(null);
+  const [respondNote, setRespondNote] = useState({});
+  const [respondFiles, setRespondFiles] = useState({});
   const [showAddMilestone, setShowAddMilestone] = useState(false);
   const [creatingMilestone, setCreatingMilestone] = useState(false);
   const [newMilestone, setNewMilestone] = useState({ title: "", description: "", amount: "", dueDate: "" });
@@ -62,6 +72,8 @@ export default function MyTask() {
     return () => clearInterval(pollingRef.current);
   }, [milestones, selectedProject]);
 
+  const loadDisputes = (projectId) => getProjectDisputes(projectId).then(setDisputes).catch(() => {});
+
   const handleSelectProject = (project) => {
     setSelectedProject(project);
     setMilestonesLoading(true);
@@ -70,6 +82,7 @@ setAlreadyReviewed(false);
       .then(setMilestones)
       .catch(() => toast.error("Failed to load milestones"))
       .finally(() => setMilestonesLoading(false));
+    loadDisputes(project.id);
     // Check if expert already reviewed this project
     if (project.status === "COMPLETED") {
       hasReviewed(project.id)
@@ -78,9 +91,54 @@ setAlreadyReviewed(false);
     }
   };
 
+  const handleFileDispute = async (milestoneId) => {
+    const reason = disputeReason[milestoneId]?.trim();
+    if (!reason) { toast.error("Please describe why you're raising a dispute."); return; }
+    setDisputeLoading(milestoneId);
+    try {
+      const dispute = await fileDispute(milestoneId, reason);
+      const evidenceFiles = disputeFiles[milestoneId] || [];
+      if (evidenceFiles.length > 0) {
+        await uploadDisputeEvidence(dispute.id, evidenceFiles);
+      }
+      setMilestones((prev) => prev.map((m) => (m.id === milestoneId ? { ...m, status: "DISPUTED" } : m)));
+      setDisputeOpen(null);
+      setDisputeReason((prev) => ({ ...prev, [milestoneId]: "" }));
+      setDisputeFiles((prev) => ({ ...prev, [milestoneId]: [] }));
+      await loadDisputes(selectedProject.id);
+      toast.success("Dispute filed. An admin will review it shortly.");
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to file dispute");
+    } finally {
+      setDisputeLoading(null);
+    }
+  };
+
+  const handleRespondDispute = async (disputeId) => {
+    const response = respondNote[disputeId]?.trim();
+    if (!response) { toast.error("Please enter your response."); return; }
+    setDisputeLoading(disputeId);
+    try {
+      await respondToDispute(disputeId, response);
+      const evidenceFiles = respondFiles[disputeId] || [];
+      if (evidenceFiles.length > 0) {
+        await uploadDisputeEvidence(disputeId, evidenceFiles);
+      }
+      setRespondNote((prev) => ({ ...prev, [disputeId]: "" }));
+      setRespondFiles((prev) => ({ ...prev, [disputeId]: [] }));
+      await loadDisputes(selectedProject.id);
+      toast.success("Response submitted.");
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to submit response");
+    } finally {
+      setDisputeLoading(null);
+    }
+  };
+
   const handleBack = () => {
     setSelectedProject(null);
     setMilestones([]);
+    setDisputes([]);
     setReviewRating(0);
     setReviewComment("");
     setAlreadyReviewed(false);
@@ -484,15 +542,133 @@ className="flex-1 p-3 border border-gray-200 rounded-xl text-sm outline-none foc
                             )}
                           </div>
                         )}
-                        {canSubmit && (
-                          <div className="flex gap-3 mt-4">
-                            <button
-                              onClick={() => handleSubmit(milestone.id)}
-                              disabled={submitting === milestone.id}
-                              className="px-4 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-orange-600 transition-all disabled:opacity-50"
-                            >
-                              {submitting === milestone.id ? "Submitting..." : "Submit Deliverable"}
-                            </button>
+
+                        {milestone.revisionCount >= 2 && (milestone.status === "SUBMITTED" || milestone.status === "REVISION_REQUESTED") && (
+                          <p className="mt-2 text-[11px] font-semibold text-red-500">
+                            This milestone has been sent back for revision {milestone.revisionCount} times. If you believe
+                            this is unwarranted, you can raise a dispute below.
+                          </p>
+                        )}
+
+                        {milestone.status === "DISPUTED" && (() => {
+                          const dispute = disputes.find((d) => d.milestoneId === milestone.id && d.status === "PENDING");
+                          if (!dispute) return null;
+                          const isRespondent = dispute.respondentId === user?.id;
+                          return (
+                            <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded-xl space-y-2">
+                              <p className="text-[11px] font-bold text-red-600 uppercase">Dispute filed by {dispute.filedByName}</p>
+                              <p className="text-xs text-gray-700 leading-relaxed">{dispute.reason}</p>
+                              {isRespondent && !dispute.respondentResponse && (
+                                <div className="space-y-2 pt-1">
+                                  <textarea
+                                    value={respondNote[dispute.id] ?? ""}
+                                    onChange={(e) => setRespondNote((prev) => ({ ...prev, [dispute.id]: e.target.value }))}
+                                    placeholder="Explain your side / submit evidence notes..."
+                                    className="w-full p-3 border border-red-200 rounded-xl text-xs outline-none focus:border-red-400 min-h-[70px] resize-none bg-white"
+                                  />
+                                  <input
+                                    type="file"
+                                    multiple
+                                    onChange={(e) => setRespondFiles((prev) => ({ ...prev, [dispute.id]: Array.from(e.target.files) }))}
+                                    className="w-full text-[11px] text-gray-500"
+                                  />
+                                  <button
+                                    onClick={() => handleRespondDispute(dispute.id)}
+                                    disabled={disputeLoading === dispute.id}
+                                    className="px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-all disabled:opacity-50"
+                                  >
+                                    {disputeLoading === dispute.id ? "Submitting..." : "Submit Response"}
+                                  </button>
+                                </div>
+                              )}
+                              {dispute.respondentResponse && (
+                                <div className="p-2 bg-white border border-red-100 rounded-lg">
+                                  <p className="text-[10px] font-bold text-gray-400 uppercase mb-0.5">Response</p>
+                                  <p className="text-xs text-gray-700">{dispute.respondentResponse}</p>
+                                  {dispute.respondentEvidenceUrls?.length > 0 && (
+                                    <div className="mt-2 flex flex-wrap gap-1.5">
+                                      {dispute.respondentEvidenceUrls.map((url) => (
+                                        <a
+                                          key={url}
+                                          href={`http://localhost:8080${url}`}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="flex items-center gap-1 px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-[10px] text-gray-600 hover:border-red-300 hover:bg-red-50 transition-colors"
+                                        >
+                                          <FileText size={10} className="text-red-400" />
+                                          {url.split('/').pop().replace(/^[0-9a-f-]+_/, '')}
+                                        </a>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              <p className="text-[11px] text-red-500 italic">Waiting for admin review and verdict.</p>
+                            </div>
+                          );
+                        })()}
+
+                        {(() => {
+                          const resolved = disputes.find((d) => d.milestoneId === milestone.id && d.status === "RESOLVED");
+                          if (!resolved) return null;
+                          return (
+                            <div className="mt-3 p-3 bg-gray-50 border border-gray-100 rounded-xl">
+                              <p className="text-[11px] font-bold text-gray-500 uppercase mb-1">Dispute Resolved by Admin</p>
+                              <p className="text-xs text-gray-700">
+                                You: ${resolved.expertAmount?.toLocaleString()} · Client: ${resolved.clientAmount?.toLocaleString()}
+                              </p>
+                              {resolved.resolutionNote && (
+                                <p className="text-[11px] text-gray-500 mt-1 italic">{resolved.resolutionNote}</p>
+                              )}
+                            </div>
+                          );
+                        })()}
+
+                        {(canSubmit || milestone.status === "SUBMITTED") && (
+                          <div className="mt-4 space-y-2">
+                            <div className="flex gap-3">
+                              {canSubmit && (
+                                <button
+                                  onClick={() => handleSubmit(milestone.id)}
+                                  disabled={submitting === milestone.id}
+                                  className="px-4 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-orange-600 transition-all disabled:opacity-50"
+                                >
+                                  {submitting === milestone.id ? "Submitting..." : "Submit Deliverable"}
+                                </button>
+                              )}
+                              {(milestone.status === "SUBMITTED" || milestone.status === "REVISION_REQUESTED") && (
+                                <button
+                                  onClick={() => setDisputeOpen(disputeOpen === milestone.id ? null : milestone.id)}
+                                  disabled={disputeLoading === milestone.id}
+                                  className="flex items-center gap-1 px-4 py-2 bg-white border border-red-200 rounded-lg text-xs font-bold text-red-500 shadow-sm hover:bg-red-50 transition-all disabled:opacity-50"
+                                >
+                                  <Gavel size={12} /> Raise a Dispute
+                                </button>
+                              )}
+                            </div>
+                            {disputeOpen === milestone.id && (
+                              <div className="space-y-2 pt-1">
+                                <textarea
+                                  value={disputeReason[milestone.id] ?? ""}
+                                  onChange={(e) => setDisputeReason((prev) => ({ ...prev, [milestone.id]: e.target.value }))}
+                                  placeholder="Explain why you're raising a dispute..."
+                                  className="w-full p-3 border border-red-200 rounded-xl text-xs outline-none focus:border-red-400 min-h-[80px] resize-none"
+                                />
+                                <input
+                                  type="file"
+                                  multiple
+                                  onChange={(e) => setDisputeFiles((prev) => ({ ...prev, [milestone.id]: Array.from(e.target.files) }))}
+                                  className="w-full text-[11px] text-gray-500"
+                                />
+                                <button
+                                  onClick={() => handleFileDispute(milestone.id)}
+                                  disabled={disputeLoading === milestone.id}
+                                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-all disabled:opacity-50"
+                                >
+                                  {disputeLoading === milestone.id ? "Filing..." : "File Dispute"}
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -637,9 +813,9 @@ className="flex-1 p-3 border border-gray-200 rounded-xl text-sm outline-none foc
               <div>
                 <p className="text-sm font-bold text-orange-900">Need help?</p>
                 <p className="text-xs text-orange-700 mt-1 leading-relaxed">
-                  Dispute resolution &amp; help desk are available 24/7.
+                  If a milestone under review or revision looks stuck, use the "Raise a Dispute" button on it
+                  to escalate to an admin for arbitration.
                 </p>
-                <button className="mt-3 text-xs font-bold text-orange-600 underline">Contact Case Manager</button>
               </div>
             </div>
           </div>

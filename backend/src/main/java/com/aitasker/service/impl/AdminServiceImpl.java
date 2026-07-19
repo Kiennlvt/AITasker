@@ -1,13 +1,17 @@
 package com.aitasker.service.impl;
 
 import com.aitasker.dto.response.AdminStatsResponse;
+import com.aitasker.dto.response.CategoryStatResponse;
 import com.aitasker.dto.response.JobResponse;
+import com.aitasker.dto.response.MonthlyRevenueResponse;
 import com.aitasker.dto.response.UserResponse;
+import com.aitasker.entity.AuditLog;
 import com.aitasker.entity.JobPost;
 import com.aitasker.entity.User;
 import com.aitasker.enums.JobStatus;
 import com.aitasker.enums.UserRole;
 import com.aitasker.exception.AppException;
+import com.aitasker.repository.AuditLogRepository;
 import com.aitasker.repository.JobPostRepository;
 import com.aitasker.repository.ProposalRepository;
 import com.aitasker.repository.UserRepository;
@@ -16,7 +20,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.time.format.TextStyle;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 import com.aitasker.service.AdminRepository;
 
@@ -27,6 +38,7 @@ public class AdminServiceImpl implements AdminRepository {
     private final UserRepository userRepo;
     private final JobPostRepository jobRepo;
     private final ProposalRepository proposalRepo;
+    private final AuditLogRepository auditLogRepo;
 
     @Override
     public List<UserResponse> getAllUsers(String role) {
@@ -70,12 +82,68 @@ public class AdminServiceImpl implements AdminRepository {
 
     @Override
     public AdminStatsResponse getStats() {
+        long totalJobs = jobRepo.count();
+        long totalProposals = proposalRepo.count();
+
         return AdminStatsResponse.builder()
                 .totalUsers(userRepo.count())
-                .totalJobs(jobRepo.count())
+                .expertCount(userRepo.countByRole(UserRole.EXPERT))
+                .clientCount(userRepo.countByRole(UserRole.CLIENT))
+                .activeUsers(userRepo.countByIsActiveTrue())
+                .bannedUsers(userRepo.countByIsActiveFalse())
+                .totalJobs(totalJobs)
                 .activeJobs(jobRepo.countByStatus(JobStatus.IN_PROGRESS))
                 .completedJobs(jobRepo.countByStatus(JobStatus.COMPLETED))
+                .avgProposals(totalJobs > 0 ? Math.round((totalProposals / (double) totalJobs) * 10) / 10.0 : 0)
+                .totalBudget(jobRepo.sumAllBudget())
+                .totalEarnings(auditLogRepo.sumAllReleasedAmount().doubleValue())
+                .categoryData(buildCategoryData(totalJobs))
+                .revenueData(buildRevenueData())
                 .build();
+    }
+
+    private List<CategoryStatResponse> buildCategoryData(long totalJobs) {
+        if (totalJobs == 0) {
+            return List.of();
+        }
+        List<CategoryStatResponse> result = new ArrayList<>();
+        for (Object[] row : jobRepo.countJobsGroupedByCategory()) {
+            String category = (String) row[0];
+            long count = (long) row[1];
+            result.add(new CategoryStatResponse(category, Math.round(count * 100.0 / totalJobs)));
+        }
+        return result;
+    }
+
+    private List<MonthlyRevenueResponse> buildRevenueData() {
+        int monthsBack = 5;
+        YearMonth startMonth = YearMonth.now().minusMonths(monthsBack);
+        LocalDateTime after = startMonth.atDay(1).atStartOfDay();
+
+        Map<YearMonth, MonthlyRevenueResponse> byMonth = new LinkedHashMap<>();
+        for (int i = 0; i <= monthsBack; i++) {
+            YearMonth ym = startMonth.plusMonths(i);
+            String label = ym.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+            byMonth.put(ym, new MonthlyRevenueResponse(label, 0, 0));
+        }
+
+        for (JobPost job : jobRepo.findByCreatedAtAfterOrderByCreatedAtAsc(after)) {
+            YearMonth ym = YearMonth.from(job.getCreatedAt());
+            MonthlyRevenueResponse bucket = byMonth.get(ym);
+            if (bucket != null) {
+                bucket.setSpend(bucket.getSpend() + job.getBudget());
+            }
+        }
+
+        for (AuditLog log : auditLogRepo.findByCreatedAtAfterOrderByCreatedAtAsc(after)) {
+            YearMonth ym = YearMonth.from(log.getCreatedAt());
+            MonthlyRevenueResponse bucket = byMonth.get(ym);
+            if (bucket != null) {
+                bucket.setEarnings(bucket.getEarnings() + log.getReleasedAmount().doubleValue());
+            }
+        }
+
+        return new ArrayList<>(byMonth.values());
     }
 
     private UserResponse toUserResponse(User u) {

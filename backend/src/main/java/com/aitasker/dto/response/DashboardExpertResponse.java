@@ -13,4 +13,5 @@ public class DashboardExpertResponse {
     private Double averageRating;
     private long reviewCount;
     private List<ProjectResponse> recentProjects;
+    private List<MonthlyEarningResponse> monthlyEarnings;
 }

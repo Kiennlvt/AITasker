@@ -85,6 +85,15 @@ public class JobController {
         return ApiResponse.ok(jobService.publishDraft(user.getUsername(), id));
     }
 
+    @PostMapping("/{id}/invite/{expertId}")
+    @PreAuthorize("hasRole('CLIENT')")
+    public ApiResponse<Void> inviteExpert(@AuthenticationPrincipal UserDetails user,
+                                           @PathVariable String id,
+                                           @PathVariable String expertId) {
+        jobService.inviteExpert(user.getUsername(), id, expertId);
+        return ApiResponse.ok("Invitation sent", null);
+    }
+
     @PostMapping("/ai-suggest")
     @PreAuthorize("hasRole('CLIENT')")
     public ApiResponse<JobSuggestionDto> aiSuggest(@RequestBody AiSuggestRequest request) {

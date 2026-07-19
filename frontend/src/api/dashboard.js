@@ -6,6 +6,9 @@ export const getClientDashboard = () =>
 export const getExpertDashboard = () =>
   api.get('/dashboard/expert').then((r) => r.data.data);
 
+export const getTopExperts = () =>
+  api.get('/dashboard/client/top-experts').then((r) => r.data.data);
+
 export const getJobs = (page = 0, size = 10) =>
   api.get('/jobs', { params: { page, size, sort: 'createdAt,desc' } }).then((r) => r.data.data);
 

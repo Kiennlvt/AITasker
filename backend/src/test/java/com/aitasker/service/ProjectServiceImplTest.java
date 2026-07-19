@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +24,7 @@ class ProjectServiceImplTest {
     private UserRepository userRepo;
     private EscrowRepository escrowRepo;
     private AuditLogRepository auditLogRepo;
+    private JobPostRepository jobPostRepo;
     private WalletService walletService;
     private FileUploadService fileUploadService;
     private NotificationService notificationService;
@@ -41,11 +43,12 @@ class ProjectServiceImplTest {
         userRepo = mock(UserRepository.class);
         escrowRepo = mock(EscrowRepository.class);
         auditLogRepo = mock(AuditLogRepository.class);
+        jobPostRepo = mock(JobPostRepository.class);
         walletService = mock(WalletService.class);
         fileUploadService = mock(FileUploadService.class);
         notificationService = mock(NotificationService.class);
         projectService = new ProjectServiceImpl(projectRepo, milestoneRepo, userRepo, escrowRepo, auditLogRepo,
-                walletService, fileUploadService, notificationService);
+                jobPostRepo, walletService, fileUploadService, notificationService);
 
         client = User.builder().id("client-1").fullName("Client").build();
         expert = User.builder().id("expert-1").fullName("Expert").build();
@@ -157,7 +160,7 @@ class ProjectServiceImplTest {
                 .amount(200.0).title("Design").submittedAt(LocalDateTime.now()).build();
         when(milestoneRepo.findById("m-1")).thenReturn(Optional.of(ms));
 
-        projectService.requestRevision("client-1", "m-1", "please redo the header");
+        projectService.requestRevision("client-1", "m-1", "please redo the header", LocalDate.now().plusDays(3));
 
         assertEquals(MilestoneStatus.REVISION_REQUESTED, ms.getStatus());
         assertNull(ms.getPaidAt());
@@ -283,5 +286,62 @@ class ProjectServiceImplTest {
 
         assertEquals(BigDecimal.valueOf(500.0), escrow.getReleasedAmount());
         assertEquals(EscrowStatus.RELEASED, escrow.getStatus());
+    }
+
+    // ---- Dispute Resolution ----
+
+    @Test
+    void resolveMilestoneDispute_splitsPaymentBetweenBothParties() {
+        project.setStatus(ProjectStatus.DISPUTED);
+        Milestone ms = Milestone.builder().id("m-1").project(project).status(MilestoneStatus.DISPUTED)
+                .amount(200.0).title("Design").build();
+        when(milestoneRepo.findById("m-1")).thenReturn(Optional.of(ms));
+
+        projectService.resolveMilestoneDispute("m-1", BigDecimal.valueOf(80), BigDecimal.valueOf(120), "60/40 split", "admin-1");
+
+        verify(walletService).creditFromEscrowRelease(eq("expert-1"), eq(BigDecimal.valueOf(120)), any());
+        verify(walletService).creditFromEscrowRefund(eq("client-1"), eq(BigDecimal.valueOf(80)), any());
+        assertEquals(MilestoneStatus.PAID, ms.getStatus());
+        assertNotNull(ms.getPaidAt());
+        assertEquals(ProjectStatus.ACTIVE, project.getStatus());
+        assertEquals(BigDecimal.valueOf(120), escrow.getReleasedAmount());
+    }
+
+    @Test
+    void resolveMilestoneDispute_skipsWalletCalls_whenOnePartyGetsNothing() {
+        project.setStatus(ProjectStatus.DISPUTED);
+        Milestone ms = Milestone.builder().id("m-1").project(project).status(MilestoneStatus.DISPUTED)
+                .amount(200.0).title("Design").build();
+        when(milestoneRepo.findById("m-1")).thenReturn(Optional.of(ms));
+
+        projectService.resolveMilestoneDispute("m-1", BigDecimal.valueOf(200), BigDecimal.ZERO, "full refund", "admin-1");
+
+        verify(walletService, never()).creditFromEscrowRelease(any(), any(), any());
+        verify(walletService).creditFromEscrowRefund(eq("client-1"), eq(BigDecimal.valueOf(200)), any());
+        assertEquals(MilestoneStatus.PAID, ms.getStatus());
+    }
+
+    @Test
+    void resolveMilestoneDispute_rejectsMilestoneNotUnderDispute() {
+        Milestone ms = Milestone.builder().id("m-1").project(project).status(MilestoneStatus.SUBMITTED)
+                .amount(200.0).title("Design").build();
+        when(milestoneRepo.findById("m-1")).thenReturn(Optional.of(ms));
+
+        assertThrows(RuntimeException.class, () ->
+                projectService.resolveMilestoneDispute("m-1", BigDecimal.valueOf(100), BigDecimal.valueOf(100), null, "admin-1"));
+        verify(walletService, never()).creditFromEscrowRelease(any(), any(), any());
+    }
+
+    @Test
+    void resolveMilestoneDispute_completesProject_whenLastMilestoneSettled() {
+        project.setStatus(ProjectStatus.DISPUTED);
+        Milestone ms = Milestone.builder().id("m-1").project(project).status(MilestoneStatus.DISPUTED)
+                .amount(200.0).title("Design").build();
+        project.setMilestones(List.of(ms));
+        when(milestoneRepo.findById("m-1")).thenReturn(Optional.of(ms));
+
+        projectService.resolveMilestoneDispute("m-1", BigDecimal.ZERO, BigDecimal.valueOf(200), "pay expert in full", "admin-1");
+
+        assertEquals(ProjectStatus.COMPLETED, project.getStatus());
     }
 }

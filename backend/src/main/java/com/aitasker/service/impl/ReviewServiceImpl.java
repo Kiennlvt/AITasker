@@ -32,17 +32,20 @@ public class ReviewServiceImpl implements ReviewService {
         if (project.getStatus() != ProjectStatus.COMPLETED)
             throw AppException.badRequest("Can only review a completed project");
 
-        if (!project.getClient().getId().equals(giverId))
-            throw AppException.forbidden("Only the project client can leave a review");
+        boolean giverIsClient = project.getClient().getId().equals(giverId);
+        boolean giverIsExpert = project.getExpert().getId().equals(giverId);
+        if (!giverIsClient && !giverIsExpert)
+            throw AppException.forbidden("Only project participants can leave a review");
 
         if (reviewRepo.existsByGiverIdAndProjectId(giverId, request.getProjectId()))
             throw AppException.badRequest("You have already reviewed this project");
 
+        String expectedReceiverId = giverIsClient ? project.getExpert().getId() : project.getClient().getId();
+        if (!expectedReceiverId.equals(request.getReceiverId()))
+            throw AppException.badRequest("Receiver must be the other party on this project");
+
         User receiver = userRepo.findById(request.getReceiverId())
                 .orElseThrow(() -> AppException.notFound("Receiver not found"));
-
-        if (!receiver.getId().equals(project.getExpert().getId()))
-            throw AppException.badRequest("Receiver must be the project expert");
 
         User giver = userRepo.findById(giverId)
                 .orElseThrow(() -> AppException.notFound("Giver not found"));

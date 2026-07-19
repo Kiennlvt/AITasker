@@ -26,3 +26,6 @@ export const getMyDrafts = () =>
 
 export const publishDraft = (id) =>
   api.patch(`/jobs/${id}/publish`).then(r => r.data.data);
+
+export const inviteExpert = (jobId, expertId) =>
+  api.post(`/jobs/${jobId}/invite/${expertId}`).then(r => r.data.data);
